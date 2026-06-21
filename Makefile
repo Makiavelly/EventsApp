@@ -5,6 +5,13 @@ export PROJECT_ROOT=${shell pwd}
 
 env-up:
 	@docker compose up -d eventsapp-postgres
+	@until docker compose exec -T eventsapp-postgres \
+    	pg_isready -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)" \
+    	>/dev/null 2>&1; do \
+    	    sleep 1; \
+    	done
+	@sudo chown "${USER}":"${USER}" out
+	@sudo chmod -R a+rX out/pgdata
 
 env-down:
 	@docker compose down eventsapp-postgres
@@ -52,3 +59,8 @@ migrate-action:
 		-path /migrations \
 		-database postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:5432/${POSTGRES_DB}?sslmode=disable \
 		"$(action)"
+
+eventsapp-run:
+	@export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs && \
+	go mod tidy && \
+	go run cmd/eventsapp/main.go
