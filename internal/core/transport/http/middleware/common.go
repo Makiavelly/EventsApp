@@ -53,7 +53,7 @@ func Panic() Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			log := core_logger.FromContext(ctx)
-			responseHandler := core_http_response.NewzHTTPResponseHandler(log, w)
+			responseHandler := core_http_response.NewHTTPResponseHandler(log, w)
 
 			defer func() {
 				if p := recover(); p != nil {
@@ -79,6 +79,7 @@ func Trace() Middleware {
 			before := time.Now()
 			log.Debug(
 				">>> incoming HTTP request",
+				zap.String("http_method", r.Method),
 				zap.Time("time", time.Now().UTC()),
 			)
 

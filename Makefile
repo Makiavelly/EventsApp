@@ -19,7 +19,7 @@ env-down:
 env-cleanup:
 	@read -p "Очистить все volume-файлы окружения? ОПАСНОСТЬ УТЕРИ ДАННЫХ. [y/N]: " ans; \
 	if [ "$$ans" = "y" ]; then \
-		docker compose down eventsapp-postgres && \
+		docker compose down eventsapp-postgres port-forwarder && \
 		sudo rm -rf out/pgdata && \
 		echo "Файлы окружения очищены"; \
 	else \
@@ -62,5 +62,6 @@ migrate-action:
 
 eventsapp-run:
 	@export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs && \
+	export POSTGRES_HOST=localhost && \
 	go mod tidy && \
 	go run cmd/eventsapp/main.go
