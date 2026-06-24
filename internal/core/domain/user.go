@@ -59,6 +59,13 @@ type UserPatch struct {
 	Password Nullable[string]
 }
 
+func NewUserPatch(Name Nullable[string], Password Nullable[string]) UserPatch {
+	return UserPatch{
+		Name:     Name,
+		Password: Password,
+	}
+}
+
 func (p *UserPatch) Validate() error {
 	if p.Name.Set && p.Name.Value == nil {
 		return fmt.Errorf("'Name' cant't be patched to NULL: %w", core_errors.ErrInvalidArgument)
