@@ -5,6 +5,13 @@ export PROJECT_ROOT=${shell pwd}
 
 env-up:
 	@docker compose up -d eventsapp-postgres
+	@until docker compose exec -T eventsapp-postgres \
+    	pg_isready -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)" \
+    	>/dev/null 2>&1; do \
+    	    sleep 1; \
+    	done
+	@sudo chown "${USER}":"${USER}" out
+	@sudo chmod -R a+rX ${PROJECT_ROOT}/out/pgdata
 
 env-down:
 	@docker compose down eventsapp-postgres
@@ -12,8 +19,8 @@ env-down:
 env-cleanup:
 	@read -p "Очистить все volume-файлы окружения? ОПАСНОСТЬ УТЕРИ ДАННЫХ. [y/N]: " ans; \
 	if [ "$$ans" = "y" ]; then \
-		docker compose down eventsapp-postgres && \
-		sudo rm -rf out/pgdata && \
+		docker compose down eventsapp-postgres port-forwarder && \
+		sudo rm -rf ${PROJECT_ROOT}/out/pgdata && \
 		echo "Файлы окружения очищены"; \
 	else \
 		echo "Очистка окружения отменена"; \
@@ -52,3 +59,9 @@ migrate-action:
 		-path /migrations \
 		-database postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:5432/${POSTGRES_DB}?sslmode=disable \
 		"$(action)"
+
+eventsapp-run:
+	@export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs && \
+	export POSTGRES_HOST=localhost && \
+	go mod tidy && \
+	go run ${PROJECT_ROOT}/cmd/eventsapp/main.go
