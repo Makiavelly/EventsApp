@@ -6,18 +6,28 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
 	core_pgx_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool/pgx"
 	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_server "github.com/Makiavelly/EventsApp/internal/core/transport/http/server"
+	events_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/events/repository/postgres"
+	events_service "github.com/Makiavelly/EventsApp/internal/features/events/service"
+	events_transport_http "github.com/Makiavelly/EventsApp/internal/features/events/transport/http"
 	users_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/users/repository/postgres"
 	users_service "github.com/Makiavelly/EventsApp/internal/features/users/service"
 	users_transport_http "github.com/Makiavelly/EventsApp/internal/features/users/transport/http"
 	"go.uber.org/zap"
 )
 
+var (
+	timeZone = time.UTC
+)
+
 func main() {
+	time.Local = timeZone
+
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGINT, syscall.SIGTERM,
@@ -31,6 +41,8 @@ func main() {
 	}
 	defer logger.Close()
 
+	logger.Debug("application time zone", zap.Any("zone", timeZone))
+
 	logger.Debug("initializing postgres connection pool")
 	pool, err := core_pgx_pool.NewPool(ctx, core_pgx_pool.NewConfigMust())
 	if err != nil {
@@ -43,6 +55,11 @@ func main() {
 	usersService := users_service.NewUsersService(usersRepository)
 	usersTransportHTTP := users_transport_http.NewUsersHTTPHandler(usersService)
 
+	logger.Debug("initializing feature", zap.String("feature", "events"))
+	eventsRepository := events_postgres_repository.NewEventsRepository(pool)
+	eventsService := events_service.NewEventsService(eventsRepository)
+	eventsTransportHTTP := events_transport_http.NewEventsHTTPHandler(eventsService)
+
 	logger.Debug("initializing HTTP server")
 	httpServer := core_http_server.NewHTTPServer(
 		core_http_server.NewConfigMust(),
@@ -54,6 +71,8 @@ func main() {
 	)
 	apiVersionRouter := core_http_server.NewAPIVersionRouter(core_http_server.ApiVersion1)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(eventsTransportHTTP.Routes()...)
+
 	httpServer.RegisterAPIRouters(apiVersionRouter)
 
 	if err := httpServer.Run(ctx); err != nil {

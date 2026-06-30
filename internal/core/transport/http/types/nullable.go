@@ -35,3 +35,25 @@ func (n *Nullable[T]) ToDomain() domain.Nullable[T] {
 		Set:   n.Set,
 	}
 }
+
+func MapNullable[I any, O any](
+	n Nullable[I],
+	mapValue func(I) O,
+) domain.Nullable[O] {
+	if !n.Set {
+		return domain.Nullable[O]{}
+	}
+
+	if n.Value == nil {
+		return domain.Nullable[O]{
+			Set: true,
+		}
+	}
+
+	value := mapValue(*n.Value)
+
+	return domain.Nullable[O]{
+		Value: &value,
+		Set:   true,
+	}
+}

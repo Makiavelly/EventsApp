@@ -1,6 +1,6 @@
 services:
   eventsapp-postgres:
-    image: postgres:18.4-bookworm
+    image: postgis/postgis:18-3.6
     container_name: eventsapp-env-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
