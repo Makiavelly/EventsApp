@@ -65,3 +65,13 @@ eventsapp-run:
 	export POSTGRES_HOST=localhost && \
 	go mod tidy && \
 	go run ${PROJECT_ROOT}/cmd/eventsapp/main.go
+
+logs-cleanup:
+	@read -p "Очистить все lgo-файлы? ОПАСНОСТЬ УТЕРИ ЛОГОВ. [y/N]: " ans; \
+	if [ "$$ans" = "y" ]; then \
+		sudo rm -rf ${PROJECT_ROOT}/out/logs && \
+		echo "Файлы логов очищены"; \
+	else \
+		echo "Очистка логов отменена"; \
+	fi
+

@@ -23,7 +23,7 @@ func (s *UsersService) GetUsers(
 
 	users, err := s.usersRepository.GetUsers(ctx, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("create user from repository: %w", err)
+		return nil, fmt.Errorf("get users from repository: %w", err)
 	}
 
 	return users, nil

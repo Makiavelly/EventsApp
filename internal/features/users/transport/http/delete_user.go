@@ -8,7 +8,7 @@ import (
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
 
-func (h *UsersHTTPHandler) DeleteIser(rw http.ResponseWriter, r *http.Request) {
+func (h *UsersHTTPHandler) DeleteUser(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)
 	responseHandler := core_http_response.NewHTTPResponseHandler(log, rw)
