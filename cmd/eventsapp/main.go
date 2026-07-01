@@ -16,6 +16,9 @@ import (
 	events_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/events/repository/postgres"
 	events_service "github.com/Makiavelly/EventsApp/internal/features/events/service"
 	events_transport_http "github.com/Makiavelly/EventsApp/internal/features/events/transport/http"
+	participants_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/participants_events/repository/postgres"
+	participants_service "github.com/Makiavelly/EventsApp/internal/features/participants_events/service"
+	participants_transport_http "github.com/Makiavelly/EventsApp/internal/features/participants_events/transport/http"
 	users_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/users/repository/postgres"
 	users_service "github.com/Makiavelly/EventsApp/internal/features/users/service"
 	users_transport_http "github.com/Makiavelly/EventsApp/internal/features/users/transport/http"
@@ -58,6 +61,11 @@ func main() {
 	eventsService := events_service.NewEventsService(eventsRepository)
 	eventsTransportHTTP := events_transport_http.NewEventsHTTPHandler(eventsService)
 
+	logger.Debug("initializing feature", zap.String("feature", "participants_events"))
+	participantsRepository := participants_postgres_repository.NewParticipantsRepository(pool)
+	participantsService := participants_service.NewParticipantService(participantsRepository)
+	participantsTransportHTTP := participants_transport_http.NewParticipantsHTTPHandler(participantsService)
+
 	logger.Debug("initializing HTTP server")
 	httpServer := core_http_server.NewHTTPServer(
 		core_http_server.NewConfigMust(),
@@ -70,6 +78,7 @@ func main() {
 	apiVersionRouter := core_http_server.NewAPIVersionRouter(core_http_server.ApiVersion1)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(eventsTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(participantsTransportHTTP.Routes()...)
 
 	httpServer.RegisterAPIRouters(apiVersionRouter)
 

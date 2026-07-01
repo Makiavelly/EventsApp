@@ -50,5 +50,5 @@ func (h *EventsHTTPHandler) CreateEvent(rw http.ResponseWriter, r *http.Request)
 
 	response := CreateEventResponse(eventDTOFromDomain(eventDomain))
 
-	responseHandler.JSONResponse(response, http.StatusOK)
+	responseHandler.JSONResponse(response, http.StatusCreated)
 }
