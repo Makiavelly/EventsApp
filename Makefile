@@ -75,3 +75,11 @@ logs-cleanup:
 		echo "Очистка логов отменена"; \
 	fi
 
+eventsapp-deploy:
+	@docker compose up -d --build eventsapp
+
+eventsapp-undeploy:
+	@docker compose down eventsapp
+
+ps:
+	@docker compose ps
