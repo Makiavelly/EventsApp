@@ -1,0 +1,85 @@
+basePath: /api/v1
+definitions:
+  github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse:
+    properties:
+      error:
+        example: full error text
+        type: string
+      message:
+        example: short human-readable message
+        type: string
+    type: object
+  internal_features_users_transport_http.CreateUserRequest:
+    properties:
+      email:
+        example: alex@mail.ru
+        maxLength: 100
+        minLength: 9
+        type: string
+      name:
+        example: Alex
+        maxLength: 100
+        minLength: 1
+        type: string
+      password:
+        example: alexpswd
+        maxLength: 100
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  internal_features_users_transport_http.CreateUserResponse:
+    properties:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Alex
+        type: string
+      password:
+        type: string
+    type: object
+host: 172.20.247.149:5050
+info:
+  contact: {}
+  description: Events Application REST-API scheme
+  title: GoLang EventsApp API
+  version: "1.0"
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Создать нового пользователя в системе
+      parameters:
+      - description: Create user тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_users_transport_http.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданный пользователь
+          schema:
+            $ref: '#/definitions/internal_features_users_transport_http.CreateUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Создать пользователя
+      tags:
+      - users
+swagger: "2.0"
