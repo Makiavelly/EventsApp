@@ -10,12 +10,25 @@ import (
 )
 
 type CreateParticipantRequest struct {
-	EventID       int `json:"event_id" validate:"required"`
-	ParticipantID int `json:"participant_id" validate:"required"`
+	EventID       int `json:"event_id" validate:"required"       example:"1"`
+	ParticipantID int `json:"participant_id" validate:"required" example:"1"`
 }
 
 type CreateParticipantResponse ParticipantDTOResponse
 
+// CreateParticipant 	godoc
+// @Summary 			Добавить участника события
+// @Description 		Добавить пользователя в участники события
+// @Tags 				participants_events
+// @Accept 				json
+// @Produce 			json
+// @Param 				request body CreateParticipantRequest true "Create participant тело запроса"
+// @Success 			201 {object} CreateParticipantResponse "Успешно созданный участник события"
+// @Failure 			400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 			404 {object} core_http_response.ErrorResponse "User not found"
+// @Failure 			409 {object} core_http_response.ErrorResponse "Conflict"
+// @Failure 			500 {object} core_http_response.ErrorResponse "Internal server error"
+// @Router 				/participants [post]
 func (h *ParticipantsHTTPHandler) CreateParticipant(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)

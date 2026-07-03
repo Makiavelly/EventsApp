@@ -9,6 +9,202 @@ definitions:
         example: short human-readable message
         type: string
     type: object
+  github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location:
+    properties:
+      latitude:
+        example: 57.34456344
+        type: number
+      longitude:
+        example: -30.3456
+        type: number
+    type: object
+  internal_features_events_transport_http.CreateEventRequest:
+    properties:
+      creator_user_id:
+        example: 1
+        type: integer
+      date_meeting:
+        example: 2026-07-01T13-52-14.752729
+        type: string
+      description:
+        example: Go to footbal
+        maxLength: 300
+        minLength: 1
+        type: string
+      location:
+        $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      title:
+        example: Sport
+        maxLength: 50
+        minLength: 1
+        type: string
+    required:
+    - creator_user_id
+    - title
+    type: object
+  internal_features_events_transport_http.CreateEventResponse:
+    properties:
+      creator_user_id:
+        example: 1
+        type: integer
+      date_meeting:
+        example: 2026-07-01T13-52-14.752729
+        type: string
+      description:
+        example: Go to football
+        type: string
+      id:
+        example: 1
+        type: integer
+      location:
+        $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      title:
+        example: Sprot
+        type: string
+    type: object
+  internal_features_events_transport_http.EventDTOResponse:
+    properties:
+      creator_user_id:
+        example: 1
+        type: integer
+      date_meeting:
+        example: 2026-07-01T13-52-14.752729
+        type: string
+      description:
+        example: Go to football
+        type: string
+      id:
+        example: 1
+        type: integer
+      location:
+        $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      title:
+        example: Sprot
+        type: string
+    type: object
+  internal_features_events_transport_http.GetEventResponse:
+    properties:
+      creator_user_id:
+        example: 1
+        type: integer
+      date_meeting:
+        example: 2026-07-01T13-52-14.752729
+        type: string
+      description:
+        example: Go to football
+        type: string
+      id:
+        example: 1
+        type: integer
+      location:
+        $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      title:
+        example: Sprot
+        type: string
+    type: object
+  internal_features_events_transport_http.PatchEventRequest:
+    properties:
+      date_meeting:
+        example: "2026-08-10T18:00:00Z"
+        format: date-time
+        type: string
+      description:
+        example: Discuss Go backend development
+        type: string
+      location:
+        type: object
+      title:
+        example: Meetup
+        type: string
+    type: object
+  internal_features_events_transport_http.PatchEventResponse:
+    properties:
+      creator_user_id:
+        example: 1
+        type: integer
+      date_meeting:
+        example: 2026-07-01T13-52-14.752729
+        type: string
+      description:
+        example: Go to football
+        type: string
+      id:
+        example: 1
+        type: integer
+      location:
+        $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      title:
+        example: Sprot
+        type: string
+    type: object
+  internal_features_participants_events_transport_http.CreateParticipantRequest:
+    properties:
+      event_id:
+        example: 1
+        type: integer
+      participant_id:
+        example: 1
+        type: integer
+    required:
+    - event_id
+    - participant_id
+    type: object
+  internal_features_participants_events_transport_http.CreateParticipantResponse:
+    properties:
+      event_id:
+        example: 1
+        type: integer
+      participant_id:
+        example: 1
+        type: integer
+      status:
+        example: planned
+        type: string
+    type: object
+  internal_features_participants_events_transport_http.EventParticipantsDTOResponse:
+    properties:
+      event_id:
+        example: 1
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/internal_features_participants_events_transport_http.UserDTOResponse'
+        type: array
+    type: object
+  internal_features_participants_events_transport_http.PatchParticipantRequest:
+    properties:
+      status:
+        example: over
+        type: string
+    required:
+    - status
+    type: object
+  internal_features_participants_events_transport_http.PatchParticipantResponse:
+    properties:
+      event_id:
+        example: 1
+        type: integer
+      participant_id:
+        example: 1
+        type: integer
+      status:
+        example: planned
+        type: string
+    type: object
+  internal_features_participants_events_transport_http.UserDTOResponse:
+    properties:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Alex
+        type: string
+      password:
+        type: string
+    type: object
   internal_features_users_transport_http.CreateUserRequest:
     properties:
       email:
@@ -45,6 +241,57 @@ definitions:
       password:
         type: string
     type: object
+  internal_features_users_transport_http.GetUserResponse:
+    properties:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Alex
+        type: string
+      password:
+        type: string
+    type: object
+  internal_features_users_transport_http.PatchUserRequest:
+    properties:
+      name:
+        example: Alex
+        type: string
+      password:
+        example: alexpswd
+        type: string
+    type: object
+  internal_features_users_transport_http.PatchUserResponse:
+    properties:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Alex
+        type: string
+      password:
+        type: string
+    type: object
+  internal_features_users_transport_http.UserDTOResponse:
+    properties:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Alex
+        type: string
+      password:
+        type: string
+    type: object
 host: 172.20.247.149:5050
 info:
   contact: {}
@@ -52,7 +299,381 @@ info:
   title: GoLang EventsApp API
   version: "1.0"
 paths:
+  /events:
+    get:
+      description: Получить список событий с опциональным поиском по локации и пагинацией
+      parameters:
+      - description: Широта пользователя
+        in: query
+        name: latitude
+        type: number
+      - description: Долгота пользователя
+        in: query
+        name: longitude
+        type: number
+      - description: Радиус поиска событий
+        in: query
+        name: radius
+        type: integer
+      - description: Лимит событий
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение событий
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно полученный список событий
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/internal_features_events_transport_http.EventDTOResponse'
+              type: array
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Получить события
+      tags:
+      - events
+    post:
+      consumes:
+      - application/json
+      description: Создать новое событие в системе
+      parameters:
+      - description: Create event тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_events_transport_http.CreateEventRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданное событие
+          schema:
+            $ref: '#/definitions/internal_features_events_transport_http.CreateEventResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Создать событие
+      tags:
+      - events
+  /events/{id}:
+    delete:
+      description: Удалить событие по ID
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Событие успешно удалено
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Удалить событие
+      tags:
+      - events
+    get:
+      description: Получить событие по ID
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно полученное событие
+          schema:
+            $ref: '#/definitions/internal_features_events_transport_http.GetEventResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Получить событие
+      tags:
+      - events
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Частично обновить событие по ID
+        ###Логика обновления полей (Three-state logic):
+        1. **Поле не передано**: поле игнорируется, значение в БД не меняется
+        2. **Явно передано значение**: `"title":"Meetup"` - устанавливает новое значение в БД
+        3. **Явно передан null**: nullable-поля очищаются в БД
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Patch event тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_events_transport_http.PatchEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно обновленное событие
+          schema:
+            $ref: '#/definitions/internal_features_events_transport_http.PatchEventResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Обновить событие
+      tags:
+      - events
+  /participants:
+    delete:
+      description: Удалить пользователя из участников события
+      parameters:
+      - description: ID события
+        in: query
+        name: event_id
+        required: true
+        type: integer
+      - description: ID участника
+        in: query
+        name: participant_id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Участник события успешно удален
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Participant not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Удалить участника события
+      tags:
+      - participants_events
+    get:
+      description: Получить список участников событий с опциональной фильтрацией по
+        событию и пагинацией
+      parameters:
+      - description: ID события
+        in: query
+        name: event_id
+        type: integer
+      - description: Лимит участников
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение участников
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно полученный список участников событий
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/internal_features_participants_events_transport_http.EventParticipantsDTOResponse'
+              type: array
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Participants not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Получить участников событий
+      tags:
+      - participants_events
+    patch:
+      consumes:
+      - application/json
+      description: Обновить статус участника события
+      parameters:
+      - description: ID события
+        in: query
+        name: event_id
+        required: true
+        type: integer
+      - description: ID участника
+        in: query
+        name: participant_id
+        required: true
+        type: integer
+      - description: Patch participant тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_participants_events_transport_http.PatchParticipantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно обновленный участник события
+          schema:
+            $ref: '#/definitions/internal_features_participants_events_transport_http.PatchParticipantResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: Participant not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Обновить участника события
+      tags:
+      - participants_events
+    post:
+      consumes:
+      - application/json
+      description: Добавить пользователя в участники события
+      parameters:
+      - description: Create participant тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_participants_events_transport_http.CreateParticipantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданный участник события
+          schema:
+            $ref: '#/definitions/internal_features_participants_events_transport_http.CreateParticipantResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Добавить участника события
+      tags:
+      - participants_events
   /users:
+    get:
+      description: Получить список пользователей в системе с опциональной пагинацией
+      parameters:
+      - description: Лимит пользователей
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение пользователей
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно полученный список пользователей
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/internal_features_users_transport_http.UserDTOResponse'
+              type: array
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Получить пользователей
+      tags:
+      - users
     post:
       consumes:
       - application/json
@@ -80,6 +701,105 @@ paths:
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
       summary: Создать пользователя
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: Удалить пользователя по ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Пользователь успешно удален
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Удалить пользователя
+      tags:
+      - users
+    get:
+      description: Получить пользователя по ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно полученный пользователь
+          schema:
+            $ref: '#/definitions/internal_features_users_transport_http.GetUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Получить пользователя
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Частично обновить пользователя по ID
+        ###Логика обновления полей (Three-state logic):
+        1. **Поле не передано**: `name` игнорируется, значение в БД не меняется
+        2. **Явно передано значение**: `"name":"Alex"` - устанавливает новое имя в БД
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Patch user тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_users_transport_http.PatchUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно обновленный пользователь
+          schema:
+            $ref: '#/definitions/internal_features_users_transport_http.PatchUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Обновить пользователя
       tags:
       - users
 swagger: "2.0"

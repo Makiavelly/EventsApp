@@ -11,6 +11,19 @@ import (
 
 type GetParticipantsResponse []EventParticipantsDTOResponse
 
+// GetParticipantsEvents 	godoc
+// @Summary 	Получить участников событий
+// @Description Получить список участников событий с опциональной фильтрацией по событию и пагинацией
+// @Tags 		participants_events
+// @Produce 	json
+// @Param 		event_id query int false "ID события"
+// @Param 		limit query int false "Лимит участников"
+// @Param 		offset query int false "Смещение участников"
+// @Success 	200 {array} GetParticipantsResponse "Успешно полученный список участников событий"
+// @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	404 {object} core_http_response.ErrorResponse "Participants not found"
+// @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
+// @Router 		/participants [get]
 func (h *ParticipantsHTTPHandler) GetParticipantsEvents(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)

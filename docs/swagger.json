@@ -9,7 +9,562 @@
     "host": "172.20.247.149:5050",
     "basePath": "/api/v1",
     "paths": {
+        "/events": {
+            "get": {
+                "description": "Получить список событий с опциональным поиском по локации и пагинацией",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Получить события",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Широта пользователя",
+                        "name": "latitude",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Долгота пользователя",
+                        "name": "longitude",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Радиус поиска событий",
+                        "name": "radius",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит событий",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение событий",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно полученный список событий",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/internal_features_events_transport_http.EventDTOResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Создать новое событие в системе",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Создать событие",
+                "parameters": [
+                    {
+                        "description": "Create event тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_events_transport_http.CreateEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешно созданное событие",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_events_transport_http.CreateEventResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/events/{id}": {
+            "get": {
+                "description": "Получить событие по ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Получить событие",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно полученное событие",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_events_transport_http.GetEventResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удалить событие по ID",
+                "tags": [
+                    "events"
+                ],
+                "summary": "Удалить событие",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Событие успешно удалено"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Частично обновить событие по ID\n###Логика обновления полей (Three-state logic):\n1. **Поле не передано**: поле игнорируется, значение в БД не меняется\n2. **Явно передано значение**: `\"title\":\"Meetup\"` - устанавливает новое значение в БД\n3. **Явно передан null**: nullable-поля очищаются в БД",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Обновить событие",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch event тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_events_transport_http.PatchEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно обновленное событие",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_events_transport_http.PatchEventResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/participants": {
+            "get": {
+                "description": "Получить список участников событий с опциональной фильтрацией по событию и пагинацией",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "participants_events"
+                ],
+                "summary": "Получить участников событий",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "event_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит участников",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение участников",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно полученный список участников событий",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/internal_features_participants_events_transport_http.EventParticipantsDTOResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Participants not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Добавить пользователя в участники события",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "participants_events"
+                ],
+                "summary": "Добавить участника события",
+                "parameters": [
+                    {
+                        "description": "Create participant тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_participants_events_transport_http.CreateParticipantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешно созданный участник события",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_participants_events_transport_http.CreateParticipantResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удалить пользователя из участников события",
+                "tags": [
+                    "participants_events"
+                ],
+                "summary": "Удалить участника события",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "event_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID участника",
+                        "name": "participant_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Участник события успешно удален"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Participant not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Обновить статус участника события",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "participants_events"
+                ],
+                "summary": "Обновить участника события",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "event_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID участника",
+                        "name": "participant_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch participant тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_participants_events_transport_http.PatchParticipantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно обновленный участник события",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_participants_events_transport_http.PatchParticipantResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Participant not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
+            "get": {
+                "description": "Получить список пользователей в системе с опциональной пагинацией",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Получить пользователей",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Лимит пользователей",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение пользователей",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно полученный список пользователей",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/internal_features_users_transport_http.UserDTOResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Создать нового пользователя в системе",
                 "consumes": [
@@ -54,6 +609,149 @@
                     }
                 }
             }
+        },
+        "/users/{id}": {
+            "get": {
+                "description": "Получить пользователя по ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Получить пользователя",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID пользователя",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно полученный пользователь",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_users_transport_http.GetUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удалить пользователя по ID",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Удалить пользователя",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID пользователя",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Пользователь успешно удален"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Частично обновить пользователя по ID\n###Логика обновления полей (Three-state logic):\n1. **Поле не передано**: `name` игнорируется, значение в БД не меняется\n2. **Явно передано значение**: `\"name\":\"Alex\"` - устанавливает новое имя в БД",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Обновить пользователя",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID пользователя",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch user тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_users_transport_http.PatchUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешно обновленный пользователь",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_users_transport_http.PatchUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -67,6 +765,282 @@
                 "message": {
                     "type": "string",
                     "example": "short human-readable message"
+                }
+            }
+        },
+        "github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "example": 57.34456344
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -30.3456
+                }
+            }
+        },
+        "internal_features_events_transport_http.CreateEventRequest": {
+            "type": "object",
+            "required": [
+                "creator_user_id",
+                "title"
+            ],
+            "properties": {
+                "creator_user_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "date_meeting": {
+                    "type": "string",
+                    "example": "2026-07-01T13-52-14.752729"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "minLength": 1,
+                    "example": "Go to footbal"
+                },
+                "location": {
+                    "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "example": "Sport"
+                }
+            }
+        },
+        "internal_features_events_transport_http.CreateEventResponse": {
+            "type": "object",
+            "properties": {
+                "creator_user_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "date_meeting": {
+                    "type": "string",
+                    "example": "2026-07-01T13-52-14.752729"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Go to football"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "location": {
+                    "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sprot"
+                }
+            }
+        },
+        "internal_features_events_transport_http.EventDTOResponse": {
+            "type": "object",
+            "properties": {
+                "creator_user_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "date_meeting": {
+                    "type": "string",
+                    "example": "2026-07-01T13-52-14.752729"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Go to football"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "location": {
+                    "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sprot"
+                }
+            }
+        },
+        "internal_features_events_transport_http.GetEventResponse": {
+            "type": "object",
+            "properties": {
+                "creator_user_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "date_meeting": {
+                    "type": "string",
+                    "example": "2026-07-01T13-52-14.752729"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Go to football"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "location": {
+                    "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sprot"
+                }
+            }
+        },
+        "internal_features_events_transport_http.PatchEventRequest": {
+            "type": "object",
+            "properties": {
+                "date_meeting": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-08-10T18:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Discuss Go backend development"
+                },
+                "location": {
+                    "type": "object"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Meetup"
+                }
+            }
+        },
+        "internal_features_events_transport_http.PatchEventResponse": {
+            "type": "object",
+            "properties": {
+                "creator_user_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "date_meeting": {
+                    "type": "string",
+                    "example": "2026-07-01T13-52-14.752729"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Go to football"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "location": {
+                    "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sprot"
+                }
+            }
+        },
+        "internal_features_participants_events_transport_http.CreateParticipantRequest": {
+            "type": "object",
+            "required": [
+                "event_id",
+                "participant_id"
+            ],
+            "properties": {
+                "event_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "participant_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "internal_features_participants_events_transport_http.CreateParticipantResponse": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "participant_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "status": {
+                    "type": "string",
+                    "example": "planned"
+                }
+            }
+        },
+        "internal_features_participants_events_transport_http.EventParticipantsDTOResponse": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_features_participants_events_transport_http.UserDTOResponse"
+                    }
+                }
+            }
+        },
+        "internal_features_participants_events_transport_http.PatchParticipantRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "over"
+                }
+            }
+        },
+        "internal_features_participants_events_transport_http.PatchParticipantResponse": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "participant_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "status": {
+                    "type": "string",
+                    "example": "planned"
+                }
+            }
+        },
+        "internal_features_participants_events_transport_http.UserDTOResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alex@mail.ru"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                },
+                "password": {
+                    "type": "string"
                 }
             }
         },
@@ -99,6 +1073,79 @@
             }
         },
         "internal_features_users_transport_http.CreateUserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alex@mail.ru"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_features_users_transport_http.GetUserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alex@mail.ru"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_features_users_transport_http.PatchUserRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "alexpswd"
+                }
+            }
+        },
+        "internal_features_users_transport_http.PatchUserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alex@mail.ru"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_features_users_transport_http.UserDTOResponse": {
             "type": "object",
             "properties": {
                 "email": {

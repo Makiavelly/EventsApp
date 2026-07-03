@@ -11,6 +11,21 @@ import (
 
 type GetEventsResponse []EventDTOResponse
 
+// GetEvents 	godoc
+// @Summary 	Получить события
+// @Description Получить список событий с опциональным поиском по локации и пагинацией
+// @Tags 		events
+// @Produce 	json
+// @Param 		latitude query number false "Широта пользователя"
+// @Param 		longitude query number false "Долгота пользователя"
+// @Param 		radius query int false "Радиус поиска событий"
+// @Param 		limit query int false "Лимит событий"
+// @Param 		offset query int false "Смещение событий"
+// @Success 	200 {array} GetEventsResponse "Успешно полученный список событий"
+// @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	404 {object} core_http_response.ErrorResponse "Event not found"
+// @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
+// @Router 		/events [get]
 func (h *EventsHTTPHandler) GetEvents(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)

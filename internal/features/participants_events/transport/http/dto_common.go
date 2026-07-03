@@ -3,9 +3,9 @@ package participants_transport_http
 import "github.com/Makiavelly/EventsApp/internal/core/domain"
 
 type ParticipantDTOResponse struct {
-	EventID       int    `json:"event_id"`
-	ParticipantID int    `json:"participant_id"`
-	Status        string `json:"status"`
+	EventID       int    `json:"event_id"       example:"1"`
+	ParticipantID int    `json:"participant_id" example:"1"`
+	Status        string `json:"status"         example:"planned"`
 }
 
 func participantDTOFromDomain(participant domain.Participant) ParticipantDTOResponse {
@@ -27,10 +27,10 @@ func participantDTOFromDomain(participant domain.Participant) ParticipantDTOResp
 // }
 
 type UserDTOResponse struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	ID       int    `json:"id"       example:"1"`
+	Name     string `json:"name"     example:"Alex"`
+	Email    string `json:"email"    example:"alex@mail.ru"`
+	Password string `json:"password" exapmle:"alexpswd"`
 }
 
 func userDTOFromDomain(user domain.User) UserDTOResponse {
@@ -53,7 +53,7 @@ func usersDTOsFromDomains(users []domain.User) []UserDTOResponse {
 }
 
 type EventParticipantsDTOResponse struct {
-	EventID int               `json:"event_id"`
+	EventID int               `json:"event_id" example:"1"`
 	Users   []UserDTOResponse `json:"users"`
 }
 

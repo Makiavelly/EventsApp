@@ -12,15 +12,27 @@ import (
 )
 
 type CreateEventRequest struct {
-	CreatorUserID int                       `json:"creator_user_id" validate:"required"`
-	Title         string                    `json:"title" validate:"required,min=1,max=50"`
-	Description   *string                   `json:"description" validate:"omitempty,min=1,max=300"`
+	CreatorUserID int                       `json:"creator_user_id" validate:"required"            example:"1"`
+	Title         string                    `json:"title" validate:"required,min=1,max=50"         example:"Sport"`
+	Description   *string                   `json:"description" validate:"omitempty,min=1,max=300" example:"Go to footbal"`
 	Location      *core_http_types.Location `json:"location" validate:"omitempty"`
-	DateMeeting   *time.Time                `json:"date_meeting" validate:"omitempty,gt"`
+	DateMeeting   *time.Time                `json:"date_meeting" validate:"omitempty,gt"           example:"2026-07-01T13-52-14.752729"`
 }
 
 type CreateEventResponse EventDTOResponse
 
+// CreateEvent 	godoc
+// @Summary 	Создать событие
+// @Description Создать новое событие в системе
+// @Tags 		events
+// @Accept 		json
+// @Produce 	json
+// @Param 		request body CreateEventRequest true "Create event тело запроса"
+// @Success 	201 {object} CreateEventResponse "Успешно созданное событие"
+// @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	404 {object} core_http_response.ErrorResponse "User not found"
+// @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
+// @Router 		/events [post]
 func (h *EventsHTTPHandler) CreateEvent(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)
