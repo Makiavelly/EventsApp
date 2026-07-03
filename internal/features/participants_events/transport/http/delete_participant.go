@@ -10,6 +10,17 @@ import (
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
 
+// DeleteParticipant 	godoc
+// @Summary 	Удалить участника события
+// @Description Удалить пользователя из участников события
+// @Tags 		participants_events
+// @Param 		event_id query int true "ID события"
+// @Param 		participant_id query int true "ID участника"
+// @Success 	204 "Участник события успешно удален"
+// @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	404 {object} core_http_response.ErrorResponse "Participant not found"
+// @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
+// @Router 		/participants [delete]
 func (h *ParticipantsHTTPHandler) DeleteParticipant(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)

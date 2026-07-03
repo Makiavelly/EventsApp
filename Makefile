@@ -81,5 +81,13 @@ eventsapp-deploy:
 eventsapp-undeploy:
 	@docker compose down eventsapp
 
+swagger-gen:
+	@docker compose run --rm swagger \
+		init \
+		-g cmd/eventsapp/main.go \
+		-o docs \
+		--parseInternal \
+		--parseDependency
+
 ps:
 	@docker compose ps

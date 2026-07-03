@@ -5,8 +5,8 @@ import (
 )
 
 type Location struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	Latitude  float64 `json:"latitude"  example:"57.34456344"`
+	Longitude float64 `json:"longitude" example:"-30.345600"`
 }
 
 func (l *Location) ToDomain() domain.EventLocation {

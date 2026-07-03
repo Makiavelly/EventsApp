@@ -3,10 +3,10 @@ package users_transport_http
 import "github.com/Makiavelly/EventsApp/internal/core/domain"
 
 type UserDTOResponse struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	ID       int    `json:"id"       example:"1"`
+	Name     string `json:"name"     example:"Alex"`
+	Email    string `json:"email"    example:"alex@mail.ru"`
+	Password string `json:"password" exapmle:"alexpswd"`
 }
 
 func userDTOFromDomain(user domain.User) UserDTOResponse {

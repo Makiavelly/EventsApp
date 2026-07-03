@@ -13,10 +13,10 @@ import (
 )
 
 type PatchEventRequest struct {
-	Title       core_http_types.Nullable[string]                   `json:"title"`
-	Description core_http_types.Nullable[string]                   `json:"description"`
-	Location    core_http_types.Nullable[core_http_types.Location] `json:"location"`
-	DateMeeting core_http_types.Nullable[time.Time]                `json:"date_meeting"`
+	Title       core_http_types.Nullable[string]                   `json:"title"        swaggertype:"string" example:"Meetup"`
+	Description core_http_types.Nullable[string]                   `json:"description"  swaggertype:"string" example:"Discuss Go backend development"`
+	Location    core_http_types.Nullable[core_http_types.Location] `json:"location"     swaggertype:"object"`
+	DateMeeting core_http_types.Nullable[time.Time]                `json:"date_meeting" swaggertype:"string" format:"date-time" example:"2026-08-10T18:00:00Z"`
 }
 
 func (r *PatchEventRequest) Validate() error {
@@ -74,6 +74,23 @@ func (r *PatchEventRequest) Validate() error {
 
 type PatchEventResponse EventDTOResponse
 
+// PatchEvent 	godoc
+// @Summary 	Обновить событие
+// @Description Частично обновить событие по ID
+// @Description ###Логика обновления полей (Three-state logic):
+// @Description 1. **Поле не передано**: поле игнорируется, значение в БД не меняется
+// @Description 2. **Явно передано значение**: `"title":"Meetup"` - устанавливает новое значение в БД
+// @Description 3. **Явно передан null**: nullable-поля очищаются в БД
+// @Tags 		events
+// @Accept 		json
+// @Produce 	json
+// @Param 		id path int true "ID события"
+// @Param 		request body PatchEventRequest true "Patch event тело запроса"
+// @Success 	200 {object} PatchEventResponse "Успешно обновленное событие"
+// @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	404 {object} core_http_response.ErrorResponse "Event not found"
+// @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
+// @Router 		/events/{id} [patch]
 func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := core_logger.FromContext(ctx)
