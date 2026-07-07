@@ -22,6 +22,8 @@ func CORS() Middleware {
 				"http://172.20.247.149:5050": {},
 				"null":                       {},
 				"http://localhost:8000":      {},
+				"http://localhost:5173":      {},
+				"http://172.20.247.149:5173": {},
 			}
 
 			origin := r.Header.Get("Origin")

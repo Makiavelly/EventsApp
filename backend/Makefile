@@ -1,0 +1,97 @@
+include ../.env
+export
+
+export BACKEND_ROOT=${shell pwd}
+export REPO_ROOT=${shell cd .. && pwd}
+export COMPOSE_FILE=${REPO_ROOT}/docker-compose.yaml
+
+env-up:
+	@docker compose up -d eventsapp-postgres
+	@until docker compose exec -T eventsapp-postgres \
+    	pg_isready -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)" \
+    	>/dev/null 2>&1; do \
+    	    sleep 1; \
+    	done
+	@sudo chown "${USER}":"${USER}" ${REPO_ROOT}/out
+	@sudo chmod -R a+rX ${REPO_ROOT}/out/pgdata
+
+env-down:
+	@docker compose down eventsapp-postgres
+
+env-cleanup:
+	@read -p "Очистить все volume-файлы окружения? ОПАСНОСТЬ УТЕРИ ДАННЫХ. [y/N]: " ans; \
+	if [ "$$ans" = "y" ]; then \
+		docker compose down eventsapp-postgres port-forwarder && \
+		sudo rm -rf ${REPO_ROOT}/out/pgdata && \
+		echo "Файлы окружения очищены"; \
+	else \
+		echo "Очистка окружения отменена"; \
+	fi
+
+env-port-forward:
+	@docker compose up -d port-forwarder
+
+env-port-close:
+	@docker compose down port-forwarder
+
+migrate-create:
+	@if [ -z "$(seq)" ]; then \
+		echo "Отсутствует необходимый параметр 'seq'. Пример: make migrate-create seq=init"; \
+		exit 1; \
+	fi; \
+	docker compose run --rm eventsapp-postgres-migrate \
+		create \
+		-ext sql \
+		-dir /migrations \
+		-seq "$(seq)"
+	sudo chown -R "${USER}":"${USER}" ${BACKEND_ROOT}/migrations
+
+migrate-up:
+	@make migrate-action action=up
+
+migrate-down:
+	@make migrate-action action=down
+
+migrate-action:
+	@if [ -z "$(action)" ]; then \
+		echo "Отсутствует необходимый параметр 'action'. Пример: make migrate-action action=up"; \
+		exit 1; \
+	fi; \
+	docker compose run --rm eventsapp-postgres-migrate \
+		-path /migrations \
+		-database postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:5432/${POSTGRES_DB}?sslmode=disable \
+		"$(action)"
+
+eventsapp-run:
+	@mkdir -p ${REPO_ROOT}/out/logs
+	@export PROJECT_ROOT=${BACKEND_ROOT} && \
+	export LOGGER_FOLDER=${REPO_ROOT}/out/logs && \
+	export POSTGRES_HOST=localhost && \
+	go mod tidy && \
+	go run ${BACKEND_ROOT}/cmd/eventsapp/main.go
+
+logs-cleanup:
+	@read -p "Очистить все lgo-файлы? ОПАСНОСТЬ УТЕРИ ЛОГОВ. [y/N]: " ans; \
+	if [ "$$ans" = "y" ]; then \
+		sudo rm -rf ${REPO_ROOT}/out/logs && \
+		echo "Файлы логов очищены"; \
+	else \
+		echo "Очистка логов отменена"; \
+	fi
+
+eventsapp-deploy:
+	@docker compose up -d --build eventsapp
+
+eventsapp-undeploy:
+	@docker compose down eventsapp
+
+swagger-gen:
+	@docker compose run --rm swagger \
+		init \
+		-g cmd/eventsapp/main.go \
+		-o docs \
+		--parseInternal \
+		--parseDependency
+
+ps:
+	@docker compose ps
