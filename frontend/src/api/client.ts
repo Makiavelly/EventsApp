@@ -72,15 +72,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getEvents(filters: EventsFilters = {}) {
+  getEvents(filters: EventsFilters = {}, signal?: AbortSignal) {
     return request<Event[]>(
       buildUrl("/events", {
         latitude: filters.latitude,
         longitude: filters.longitude,
         radius: filters.radius,
+        west: filters.bounds?.west,
+        south: filters.bounds?.south,
+        east: filters.bounds?.east,
+        north: filters.bounds?.north,
         limit: filters.limit,
         offset: filters.offset,
       }),
+      { signal },
     );
   },
 

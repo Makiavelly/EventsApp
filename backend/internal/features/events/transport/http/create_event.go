@@ -16,7 +16,7 @@ type CreateEventRequest struct {
 	Title         string                    `json:"title" validate:"required,min=1,max=50"         example:"Sport"`
 	Description   *string                   `json:"description" validate:"omitempty,min=1,max=300" example:"Go to footbal"`
 	Location      *core_http_types.Location `json:"location" validate:"omitempty"`
-	DateMeeting   *time.Time                `json:"date_meeting" validate:"omitempty,gt"           example:"2026-07-01T13-52-14.752729"`
+	DateMeeting   *time.Time                `json:"date_meeting" validate:"omitempty"              example:"2026-08-10T18:00:00Z"`
 }
 
 type CreateEventResponse EventDTOResponse

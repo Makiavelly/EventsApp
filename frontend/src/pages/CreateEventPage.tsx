@@ -27,14 +27,27 @@ const initialForm: CreateEventForm = {
   dateMeeting: "",
 };
 
+function dateTimeLocalValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
 export function CreateEventPage() {
   const [form, setForm] = useState<CreateEventForm>(initialForm);
+  const [dateMeetingError, setDateMeetingError] = useState<string>();
   const [createdId, setCreatedId] = useState<number | null>(null);
   const createEvent = useCreateEvent();
   const navigate = useNavigate();
+  const dateMeetingMin = new Date();
+  const dateMeetingMax = new Date(dateMeetingMin);
+  dateMeetingMax.setFullYear(dateMeetingMax.getFullYear() + 1);
 
   function updateField(field: keyof CreateEventForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+
+    if (field === "dateMeeting") {
+      setDateMeetingError(undefined);
+    }
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -57,13 +70,34 @@ export function CreateEventPage() {
     }
 
     if (form.dateMeeting) {
-      payload.date_meeting = new Date(form.dateMeeting).toISOString();
+      const dateMeeting = new Date(form.dateMeeting);
+      const now = new Date();
+      const maxDate = new Date(now);
+      maxDate.setFullYear(maxDate.getFullYear() + 1);
+
+      if (Number.isNaN(dateMeeting.getTime())) {
+        setDateMeetingError("Укажите корректные дату и время.");
+        return;
+      }
+
+      if (dateMeeting <= now) {
+        setDateMeetingError("Дата и время встречи должны быть в будущем.");
+        return;
+      }
+
+      if (dateMeeting > maxDate) {
+        setDateMeetingError("Событие можно запланировать не более чем на год вперёд.");
+        return;
+      }
+
+      payload.date_meeting = dateMeeting.toISOString();
     }
 
     createEvent.mutate(payload, {
       onSuccess: (createdEvent) => {
         setCreatedId(createdEvent.id);
         setForm(initialForm);
+        setDateMeetingError(undefined);
       },
     });
   }
@@ -141,6 +175,9 @@ export function CreateEventPage() {
                   name="date_meeting"
                   type="datetime-local"
                   value={form.dateMeeting}
+                  min={dateTimeLocalValue(dateMeetingMin)}
+                  max={dateTimeLocalValue(dateMeetingMax)}
+                  error={dateMeetingError}
                   onChange={(event) => updateField("dateMeeting", event.target.value)}
                 />
               </div>
@@ -149,7 +186,14 @@ export function CreateEventPage() {
             {createEvent.isError ? <p className="mt-5 text-sm text-clay">{errorMessage(createEvent.error)}</p> : null}
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button type="button" variant="secondary" onClick={() => setForm(initialForm)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setForm(initialForm);
+                  setDateMeetingError(undefined);
+                }}
+              >
                 Очистить
               </Button>
               <Button type="submit" disabled={createEvent.isPending}>

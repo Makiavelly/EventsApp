@@ -45,6 +45,30 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "number",
+                        "description": "Западная граница видимой области",
+                        "name": "west",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Южная граница видимой области",
+                        "name": "south",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Восточная граница видимой области",
+                        "name": "east",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Северная граница видимой области",
+                        "name": "north",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Лимит событий",
                         "name": "limit",
@@ -800,7 +824,7 @@ const docTemplate = `{
                 },
                 "date_meeting": {
                     "type": "string",
-                    "example": "2026-07-01T13-52-14.752729"
+                    "example": "2026-08-10T18:00:00Z"
                 },
                 "description": {
                     "type": "string",

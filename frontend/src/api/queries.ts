@@ -10,10 +10,12 @@ export const queryKeys = {
   user: (id?: number) => ["user", id] as const,
 };
 
-export function useEvents(filters: EventsFilters) {
+export function useEvents(filters: EventsFilters, enabled = true) {
   return useQuery({
     queryKey: queryKeys.events(filters),
-    queryFn: () => api.getEvents(filters),
+    queryFn: ({ signal }) => api.getEvents(filters, signal),
+    enabled,
+    placeholderData: (previousData) => previousData,
   });
 }
 
