@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_server "github.com/Makiavelly/EventsApp/internal/core/transport/http/server"
 )
 
@@ -13,11 +14,6 @@ type UsersHTTPHandler struct {
 }
 
 type UsersService interface {
-	CreateUser(
-		ctx context.Context,
-		user domain.User,
-	) (domain.User, error)
-
 	GetUsers(
 		ctx context.Context,
 		limit *int,
@@ -45,13 +41,8 @@ func NewUsersHTTPHandler(usersService UsersService) *UsersHTTPHandler {
 	return &UsersHTTPHandler{usersService: usersService}
 }
 
-func (h *UsersHTTPHandler) Routes() []core_http_server.Route {
+func (h *UsersHTTPHandler) Routes(auth core_http_middleware.Middleware) []core_http_server.Route {
 	return []core_http_server.Route{
-		{
-			Method:  http.MethodPost,
-			Path:    "/users",
-			Handler: h.CreateUser,
-		},
 		{
 			Method:  http.MethodGet,
 			Path:    "/users",
@@ -63,14 +54,16 @@ func (h *UsersHTTPHandler) Routes() []core_http_server.Route {
 			Handler: h.GetUser,
 		},
 		{
-			Method:  http.MethodDelete,
-			Path:    "/users/{id}",
-			Handler: h.DeleteUser,
+			Method:     http.MethodDelete,
+			Path:       "/users/{id}",
+			Handler:    h.DeleteUser,
+			Middleware: []core_http_middleware.Middleware{auth},
 		},
 		{
-			Method:  http.MethodPatch,
-			Path:    "/users/{id}",
-			Handler: h.PatchUser,
+			Method:     http.MethodPatch,
+			Path:       "/users/{id}",
+			Handler:    h.PatchUser,
+			Middleware: []core_http_middleware.Middleware{auth},
 		},
 	}
 }

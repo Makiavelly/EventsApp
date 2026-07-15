@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE TABLE eventsapp.users (
     id              SERIAL                      PRIMARY KEY,
     name            TEXT            NOT NULL    CHECK (char_length(name) BETWEEN 1 AND 100),
-    email           TEXT            NOT NULL    CHECK (lower(email) ~ '^[^@\s]+@(mail\.ru|gmail\.com)$' AND char_length(email) BETWEEN 9 AND 100),
+    email           TEXT            NOT NULL    UNIQUE CHECK (lower(email) ~ '^[^@\s]+@(mail\.ru|gmail\.com)$' AND char_length(email) BETWEEN 9 AND 100),
     password        TEXT            NOT NULL    CHECK (char_length(password) BETWEEN 6 AND 100)
 );
 

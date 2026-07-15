@@ -1,9 +1,12 @@
 package users_transport_http
 
 import (
+	"fmt"
 	"net/http"
 
+	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
@@ -27,6 +30,15 @@ func (h *UsersHTTPHandler) DeleteUser(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to get userID path value")
 
+		return
+	}
+	authenticatedUserID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
+		return
+	}
+	if authenticatedUserID != userID {
+		responseHandler.ErrorResponse(fmt.Errorf("cannot delete another user: %w", core_errors.ErrForbidden), "access denied")
 		return
 	}
 

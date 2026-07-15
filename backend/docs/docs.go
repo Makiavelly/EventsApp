@@ -15,6 +15,205 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Проверить учётные данные и получить токен доступа",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Войти в аккаунт",
+                "parameters": [
+                    {
+                        "description": "Login тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_auth_transport_http.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешная аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_auth_transport_http.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Отозвать refresh-сессию и удалить HttpOnly cookie",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Выйти из аккаунта",
+                "responses": {
+                    "204": {
+                        "description": "Успешный выход"
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получить профиль пользователя из токена доступа",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Получить текущего пользователя",
+                "responses": {
+                    "200": {
+                        "description": "Текущий пользователь",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_auth_transport_http.GetCurrentUserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Ротировать refresh token из HttpOnly cookie и выдать новый access JWT",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Обновить access token",
+                "responses": {
+                    "200": {
+                        "description": "Токены обновлены",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_auth_transport_http.RefreshResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "description": "Создать аккаунт и получить токен доступа",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Зарегистрировать пользователя",
+                "parameters": [
+                    {
+                        "description": "Register тело запроса",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_auth_transport_http.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Пользователь зарегистрирован",
+                        "schema": {
+                            "$ref": "#/definitions/internal_features_auth_transport_http.RegisterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already registered",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/events": {
             "get": {
                 "description": "Получить список событий с опциональным поиском по локации и пагинацией",
@@ -115,6 +314,11 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Создать новое событие в системе",
                 "consumes": [
                     "application/json"
@@ -212,6 +416,11 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Удалить событие по ID",
                 "tags": [
                     "events"
@@ -251,6 +460,11 @@ const docTemplate = `{
                 }
             },
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Частично обновить событие по ID\n###Логика обновления полей (Three-state logic):\n1. **Поле не передано**: поле игнорируется, значение в БД не меняется\n2. **Явно передано значение**: ` + "`" + `\"title\":\"Meetup\"` + "`" + ` - устанавливает новое значение в БД\n3. **Явно передан null**: nullable-поля очищаются в БД",
                 "consumes": [
                     "application/json"
@@ -372,6 +586,11 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Добавить пользователя в участники события",
                 "consumes": [
                     "application/json"
@@ -428,6 +647,11 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Удалить пользователя из участников события",
                 "tags": [
                     "participants_events"
@@ -438,13 +662,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "ID события",
                         "name": "event_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "ID участника",
-                        "name": "participant_id",
                         "in": "query",
                         "required": true
                     }
@@ -474,6 +691,11 @@ const docTemplate = `{
                 }
             },
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Обновить статус участника события",
                 "consumes": [
                     "application/json"
@@ -490,13 +712,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "ID события",
                         "name": "event_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "ID участника",
-                        "name": "participant_id",
                         "in": "query",
                         "required": true
                     },
@@ -583,50 +798,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "User not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Создать нового пользователя в системе",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Создать пользователя",
-                "parameters": [
-                    {
-                        "description": "Create user тело запроса",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_features_users_transport_http.CreateUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Успешно созданный пользователь",
-                        "schema": {
-                            "$ref": "#/definitions/internal_features_users_transport_http.CreateUserResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -811,17 +982,128 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_features_events_transport_http.CreateEventRequest": {
+        "internal_features_auth_transport_http.AuthUserDTOResponse": {
             "type": "object",
-            "required": [
-                "creator_user_id",
-                "title"
-            ],
             "properties": {
-                "creator_user_id": {
+                "email": {
+                    "type": "string",
+                    "example": "alex@mail.ru"
+                },
+                "id": {
                     "type": "integer",
                     "example": 1
                 },
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                }
+            }
+        },
+        "internal_features_auth_transport_http.GetCurrentUserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alex@mail.ru"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Alex"
+                }
+            }
+        },
+        "internal_features_auth_transport_http.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 9,
+                    "example": "alex@mail.ru"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 6,
+                    "example": "alexpswd"
+                }
+            }
+        },
+        "internal_features_auth_transport_http.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_features_auth_transport_http.AuthUserDTOResponse"
+                }
+            }
+        },
+        "internal_features_auth_transport_http.RefreshResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_features_auth_transport_http.AuthUserDTOResponse"
+                }
+            }
+        },
+        "internal_features_auth_transport_http.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 9,
+                    "example": "alex@mail.ru"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "Alex"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 6,
+                    "example": "alexpswd"
+                }
+            }
+        },
+        "internal_features_auth_transport_http.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_features_auth_transport_http.AuthUserDTOResponse"
+                }
+            }
+        },
+        "internal_features_events_transport_http.CreateEventRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
                 "date_meeting": {
                     "type": "string",
                     "example": "2026-08-10T18:00:00Z"
@@ -979,15 +1261,10 @@ const docTemplate = `{
         "internal_features_participants_events_transport_http.CreateParticipantRequest": {
             "type": "object",
             "required": [
-                "event_id",
-                "participant_id"
+                "event_id"
             ],
             "properties": {
                 "event_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "participant_id": {
                     "type": "integer",
                     "example": 1
                 }
@@ -1068,57 +1345,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Alex"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_features_users_transport_http.CreateUserRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "name",
-                "password"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 9,
-                    "example": "alex@mail.ru"
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1,
-                    "example": "Alex"
-                },
-                "password": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 6,
-                    "example": "alexpswd"
-                }
-            }
-        },
-        "internal_features_users_transport_http.CreateUserResponse": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "alex@mail.ru"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Alex"
-                },
-                "password": {
-                    "type": "string"
                 }
             }
         },
@@ -1136,9 +1362,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Alex"
-                },
-                "password": {
-                    "type": "string"
                 }
             }
         },
@@ -1169,9 +1392,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Alex"
-                },
-                "password": {
-                    "type": "string"
                 }
             }
         },
@@ -1189,11 +1409,15 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Alex"
-                },
-                "password": {
-                    "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

@@ -11,7 +11,6 @@ import { errorMessage } from "../utils/format";
 
 type CreateEventForm = {
   title: string;
-  creatorUserId: string;
   latitude: string;
   longitude: string;
   description: string;
@@ -20,7 +19,6 @@ type CreateEventForm = {
 
 const initialForm: CreateEventForm = {
   title: "",
-  creatorUserId: "",
   latitude: "",
   longitude: "",
   description: "",
@@ -55,7 +53,6 @@ export function CreateEventPage() {
 
     const payload: CreateEventPayload = {
       title: form.title.trim(),
-      creator_user_id: Number(form.creatorUserId),
     };
 
     if (form.description.trim()) {
@@ -118,8 +115,8 @@ export function CreateEventPage() {
 
         <Card className="p-5 sm:p-7">
           <form onSubmit={submit} className="grid gap-0">
-            <FormField title="Основное" description="Название и ID пользователя-создателя обязательны для backend.">
-              <div className="grid gap-4 md:grid-cols-2">
+            <FormField title="Основное" description="Вы автоматически станете организатором события.">
+              <div className="grid gap-4">
                 <Input
                   label="Название события"
                   name="title"
@@ -128,15 +125,6 @@ export function CreateEventPage() {
                   value={form.title}
                   onChange={(event) => updateField("title", event.target.value)}
                   placeholder="Футбол 5 на 5"
-                />
-                <Input
-                  label="ID пользователя"
-                  name="creator_user_id"
-                  required
-                  inputMode="numeric"
-                  value={form.creatorUserId}
-                  onChange={(event) => updateField("creatorUserId", event.target.value)}
-                  placeholder="1"
                 />
               </div>
             </FormField>

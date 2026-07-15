@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (s *UsersService) PatchUser(
@@ -19,6 +20,13 @@ func (s *UsersService) PatchUser(
 
 	if err := user.ApplyPatch(patch); err != nil {
 		return domain.User{}, fmt.Errorf("apply user patch: %w", err)
+	}
+	if patch.Password.Set {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return domain.User{}, fmt.Errorf("hash password: %w", err)
+		}
+		user.Password = string(hashedPassword)
 	}
 
 	patchedUser, err := s.usersRepository.PatchUser(ctx, id, user)
