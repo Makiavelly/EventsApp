@@ -1,19 +1,23 @@
-import { CalendarPlus, UserRound, X, ListChecks } from "lucide-react";
+import { CalendarPlus, LogIn, UserRound, X, ListChecks } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Button } from "./Button";
+import { useAuth } from "../auth/useAuth";
 
 type SidebarProps = {
   open: boolean;
   onClose: () => void;
 };
 
-const items = [
+const commonItems = [
   { to: "/create", label: "Создать событие", icon: CalendarPlus },
   { to: "/", label: "Посмотреть события", icon: ListChecks },
-  { to: "/profile", label: "Профиль", icon: UserRound },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+	const { user } = useAuth();
+	const items = [...commonItems, user
+	  ? { to: "/profile", label: "Профиль", icon: UserRound }
+	  : { to: "/auth", label: "Войти", icon: LogIn }];
   return (
     <div className={open ? "pointer-events-auto fixed inset-0 z-40" : "pointer-events-none fixed inset-0 z-40"}>
       <div

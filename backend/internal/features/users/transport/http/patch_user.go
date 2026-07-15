@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
+	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 	core_http_types "github.com/Makiavelly/EventsApp/internal/core/transport/http/types"
@@ -34,8 +36,8 @@ func (r *PatchUserRequest) Validate() error {
 		}
 
 		passwordLen := len([]rune(*r.Password.Value))
-		if passwordLen < 6 || passwordLen > 100 {
-			return fmt.Errorf("'Password' must be between 6 and 100 symbols")
+		if passwordLen < 6 || passwordLen > 72 {
+			return fmt.Errorf("'Password' must be between 6 and 72 symbols")
 		}
 	}
 
@@ -69,6 +71,15 @@ func (h *UsersHTTPHandler) PatchUser(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to get userID path value")
 
+		return
+	}
+	authenticatedUserID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
+		return
+	}
+	if authenticatedUserID != userID {
+		responseHandler.ErrorResponse(fmt.Errorf("cannot update another user: %w", core_errors.ErrForbidden), "access denied")
 		return
 	}
 

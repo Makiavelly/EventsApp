@@ -5,13 +5,13 @@ import (
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
 
 type CreateParticipantRequest struct {
-	EventID       int `json:"event_id" validate:"required"       example:"1"`
-	ParticipantID int `json:"participant_id" validate:"required" example:"1"`
+	EventID int `json:"event_id" validate:"required"       example:"1"`
 }
 
 type CreateParticipantResponse ParticipantDTOResponse
@@ -20,6 +20,7 @@ type CreateParticipantResponse ParticipantDTOResponse
 // @Summary 			Добавить участника события
 // @Description 		Добавить пользователя в участники события
 // @Tags 				participants_events
+// @Security 			BearerAuth
 // @Accept 				json
 // @Produce 			json
 // @Param 				request body CreateParticipantRequest true "Create participant тело запроса"
@@ -40,13 +41,18 @@ func (h *ParticipantsHTTPHandler) CreateParticipant(rw http.ResponseWriter, r *h
 
 		return
 	}
+	participantID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
+		return
+	}
 
 	participantDomain := domain.NewParticipantUninitialized(
 		request.EventID,
-		request.ParticipantID,
+		participantID,
 	)
 
-	participantDomain, err := h.participantsService.CreateParticipant(ctx, participantDomain)
+	participantDomain, err = h.participantsService.CreateParticipant(ctx, participantDomain)
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to create participant")
 

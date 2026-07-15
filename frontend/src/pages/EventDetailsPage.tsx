@@ -1,12 +1,11 @@
-import { FormEvent, useState } from "react";
 import type { ReactNode } from "react";
 import { CalendarDays, MapPin, UserPlus, UsersRound } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useEvent, useJoinEvent, useParticipants } from "../api/queries";
 import type { ParticipantUser } from "../api/types";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-import { Input } from "../components/Input";
+	import { useAuth } from "../auth/useAuth";
 import { StatusView } from "../components/StatusView";
 import { Table } from "../components/Table";
 import { errorMessage, formatDateTime, formatLocation } from "../utils/format";
@@ -14,7 +13,8 @@ import { errorMessage, formatDateTime, formatLocation } from "../utils/format";
 export function EventDetailsPage() {
   const { id } = useParams();
   const eventId = Number(id);
-  const [participantId, setParticipantId] = useState("");
+	const { user } = useAuth();
+	const location = useLocation();
 
   const eventQuery = useEvent(eventId);
   const participantsQuery = useParticipants(eventId);
@@ -22,17 +22,6 @@ export function EventDetailsPage() {
 
   const participants =
     participantsQuery.data?.find((item) => item.event_id === eventId)?.users ?? participantsQuery.data?.[0]?.users ?? [];
-
-  function submitJoin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const parsedParticipantId = Number(participantId);
-
-    if (!Number.isFinite(parsedParticipantId)) {
-      return;
-    }
-
-    joinEvent.mutate({ event_id: eventId, participant_id: parsedParticipantId });
-  }
 
   if (!Number.isFinite(eventId)) {
     return <StatusView title="Некорректный ID события" description="Проверьте адрес страницы." tone="error" />;
@@ -80,24 +69,19 @@ export function EventDetailsPage() {
         <Card className="p-5">
           <h2 className="text-lg font-semibold text-ink">Присоединиться</h2>
           <p className="mt-2 text-sm leading-6 text-ink/60">
-            Авторизации нет, поэтому backend ожидает ID пользователя.
+			{user ? "Ваш аккаунт будет добавлен в список участников." : "Войдите в аккаунт, чтобы стать участником."}
           </p>
-          <form onSubmit={submitJoin} className="mt-5 grid gap-3">
-            <Input
-              label="ID пользователя"
-              name="participant_id"
-              inputMode="numeric"
-              required
-              value={participantId}
-              onChange={(event) => setParticipantId(event.target.value)}
-              placeholder="1"
-            />
-            <Button type="submit" icon={<UserPlus size={17} />} disabled={joinEvent.isPending}>
-              {joinEvent.isPending ? "Добавляем..." : "Стать участником"}
-            </Button>
+		  <div className="mt-5 grid gap-3">
+			{user ? (
+			  <Button icon={<UserPlus size={17} />} disabled={joinEvent.isPending} onClick={() => joinEvent.mutate({ event_id: eventId })}>
+				{joinEvent.isPending ? "Добавляем..." : "Стать участником"}
+			  </Button>
+			) : (
+			  <Link to="/auth" state={{ from: location.pathname }} className="focus-ring inline-flex min-h-10 items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white">Войти</Link>
+			)}
             {joinEvent.isError ? <p className="text-sm text-clay">{errorMessage(joinEvent.error)}</p> : null}
             {joinEvent.isSuccess ? <p className="text-sm font-medium text-meadow">Участник добавлен.</p> : null}
-          </form>
+		  </div>
         </Card>
       </section>
 

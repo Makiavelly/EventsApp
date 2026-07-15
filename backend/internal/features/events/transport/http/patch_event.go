@@ -7,6 +7,7 @@ import (
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 	core_http_types "github.com/Makiavelly/EventsApp/internal/core/transport/http/types"
@@ -82,6 +83,7 @@ type PatchEventResponse EventDTOResponse
 // @Description 2. **Явно передано значение**: `"title":"Meetup"` - устанавливает новое значение в БД
 // @Description 3. **Явно передан null**: nullable-поля очищаются в БД
 // @Tags 		events
+// @Security 	BearerAuth
 // @Accept 		json
 // @Produce 	json
 // @Param 		id path int true "ID события"
@@ -102,6 +104,12 @@ func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) 
 
 		return
 	}
+	actorUserID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
+
+		return
+	}
 
 	var request PatchEventRequest
 	if err := core_http_request.DecodeAndValidateRequest(r, &request); err != nil {
@@ -112,7 +120,7 @@ func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) 
 
 	eventPatch := eventPatchFromRequest(request)
 
-	eventDomain, err := h.eventsService.PatchEvent(ctx, eventID, eventPatch)
+	eventDomain, err := h.eventsService.PatchEvent(ctx, eventID, actorUserID, eventPatch)
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to patch task")
 

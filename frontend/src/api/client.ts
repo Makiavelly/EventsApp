@@ -1,11 +1,13 @@
 import type {
   ApiErrorBody,
+  AuthResponse,
   CreateEventPayload,
   CreateParticipantPayload,
   CreateUserPayload,
   Event,
   EventParticipants,
   EventsFilters,
+  LoginPayload,
   User,
 } from "./types";
 
@@ -15,6 +17,10 @@ export const API_BASE_URL =
   configuredBaseUrl && configuredBaseUrl.trim().length > 0
     ? configuredBaseUrl.replace(/\/$/, "")
     : "http://172.20.247.149:5050/api/v1";
+
+let accessToken: string | null = null;
+let refreshPromise: Promise<AuthResponse> | null = null;
+const authenticationExpiredListeners = new Set<() => void>();
 
 export class ApiError extends Error {
   status: number;
@@ -26,6 +32,20 @@ export class ApiError extends Error {
     this.status = status;
     this.details = details;
   }
+}
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export function onAuthenticationExpired(listener: () => void) {
+  authenticationExpiredListeners.add(listener);
+  return () => authenticationExpiredListeners.delete(listener);
+}
+
+function expireAuthentication() {
+  accessToken = null;
+  authenticationExpiredListeners.forEach((listener) => listener());
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>) {
@@ -40,11 +60,13 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString();
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function sendRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },
   });
@@ -56,7 +78,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
   const responseText = await response.text();
   const shouldParseJson =
-    contentType.includes("application/json") || responseText.trim().startsWith("{") || responseText.trim().startsWith("[");
+    contentType.includes("application/json") ||
+    responseText.trim().startsWith("{") ||
+    responseText.trim().startsWith("[");
   const body = shouldParseJson && responseText ? (JSON.parse(responseText) as unknown) : responseText;
 
   if (!response.ok) {
@@ -71,7 +95,92 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+async function refreshAuthentication() {
+  if (!refreshPromise) {
+    refreshPromise = withRefreshLock(() =>
+      sendRequest<AuthResponse>(buildUrl("/auth/refresh"), { method: "POST" }),
+    )
+      .then((response) => {
+        setAccessToken(response.token);
+        return response;
+      })
+      .catch((error: unknown) => {
+        expireAuthentication();
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+function withRefreshLock<T>(action: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return new Promise<T>((resolve, reject) => {
+      void navigator.locks
+        .request("eventsapp-auth-refresh", async () => {
+          try {
+            resolve(await action());
+          } catch (error) {
+            reject(error);
+          }
+        })
+        .catch(reject);
+    });
+  }
+
+  return action();
+}
+
+async function request<T>(path: string, init?: RequestInit, canRefresh = true): Promise<T> {
+  try {
+    return await sendRequest<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401 || !canRefresh) {
+      throw error;
+    }
+
+    await refreshAuthentication();
+    return sendRequest<T>(path, init);
+  }
+}
+
 export const api = {
+  async register(payload: CreateUserPayload) {
+    const response = await request<AuthResponse>(
+      buildUrl("/auth/register"),
+      { method: "POST", body: JSON.stringify(payload) },
+      false,
+    );
+    setAccessToken(response.token);
+    return response;
+  },
+
+  async login(payload: LoginPayload) {
+    const response = await request<AuthResponse>(
+      buildUrl("/auth/login"),
+      { method: "POST", body: JSON.stringify(payload) },
+      false,
+    );
+    setAccessToken(response.token);
+    return response;
+  },
+
+  refresh() {
+    return refreshAuthentication();
+  },
+
+  me() {
+    return request<User>(buildUrl("/auth/me"));
+  },
+
+  async logout() {
+	await request<void>(buildUrl("/auth/logout"), { method: "POST" }, false);
+	setAccessToken(null);
+  },
+
   getEvents(filters: EventsFilters = {}) {
     return request<Event[]>(
       buildUrl("/events", {
@@ -103,19 +212,8 @@ export const api = {
     return request<User>(buildUrl(`/users/${id}`));
   },
 
-  createUser(payload: CreateUserPayload) {
-    return request<User>(buildUrl("/users"), {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
   getParticipants(eventId?: number) {
-    return request<EventParticipants[]>(
-      buildUrl("/participants", {
-        event_id: eventId,
-      }),
-    );
+    return request<EventParticipants[]>(buildUrl("/participants", { event_id: eventId }));
   },
 
   createParticipant(payload: CreateParticipantPayload) {

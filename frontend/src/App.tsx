@@ -5,6 +5,8 @@ import { EventDetailsPage } from "./pages/EventDetailsPage";
 import { EventsPage } from "./pages/EventsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { AuthPage } from "./pages/AuthPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const router = createBrowserRouter([
   {
@@ -14,8 +16,9 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <EventsPage /> },
       { path: "events/:id", element: <EventDetailsPage /> },
-      { path: "create", element: <CreateEventPage /> },
-      { path: "profile", element: <ProfilePage /> },
+	  { path: "auth", element: <AuthPage /> },
+      { path: "create", element: <ProtectedRoute><CreateEventPage /></ProtectedRoute> },
+      { path: "profile", element: <ProtectedRoute><ProfilePage /></ProtectedRoute> },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

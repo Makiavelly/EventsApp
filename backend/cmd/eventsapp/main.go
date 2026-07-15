@@ -8,11 +8,15 @@ import (
 	"syscall"
 	"time"
 
+	core_auth "github.com/Makiavelly/EventsApp/internal/core/auth"
 	core_config "github.com/Makiavelly/EventsApp/internal/core/config"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
 	core_pgx_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool/pgx"
 	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_server "github.com/Makiavelly/EventsApp/internal/core/transport/http/server"
+	auth_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/auth/repository/postgres"
+	auth_service "github.com/Makiavelly/EventsApp/internal/features/auth/service"
+	auth_transport_http "github.com/Makiavelly/EventsApp/internal/features/auth/transport/http"
 	events_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/events/repository/postgres"
 	events_service "github.com/Makiavelly/EventsApp/internal/features/events/service"
 	events_transport_http "github.com/Makiavelly/EventsApp/internal/features/events/transport/http"
@@ -35,6 +39,9 @@ import (
 // @description Events Application REST-API scheme
 // @host 		172.20.247.149:5050
 // @BasePath 	/api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	cfg := core_config.NewConfigMust()
 	time.Local = cfg.TimeZone
@@ -66,6 +73,24 @@ func main() {
 	usersService := users_service.NewUsersService(usersRepository)
 	usersTransportHTTP := users_transport_http.NewUsersHTTPHandler(usersService)
 
+	logger.Debug("initializing feature", zap.String("feature", "auth"))
+	authConfig := core_auth.NewConfigMust()
+	accessTokenManager := core_auth.NewAccessTokenManager(authConfig)
+	refreshTokenManager := core_auth.NewRefreshTokenManager()
+	authRepository := auth_postgres_repository.NewAuthRepository(pool)
+	authMiddleware := core_http_middleware.Authenticate(accessTokenManager)
+	authService := auth_service.NewAuthService(
+		usersService,
+		authRepository,
+		accessTokenManager,
+		refreshTokenManager,
+		authConfig.RefreshTokenTTL,
+	)
+	authTransportHTTP := auth_transport_http.NewAuthHTTPHandler(
+		authService,
+		auth_transport_http.NewCookieConfigMust(),
+	)
+
 	logger.Debug("initializing feature", zap.String("feature", "events"))
 	eventsRepository := events_postgres_repository.NewEventsRepository(pool)
 	eventsService := events_service.NewEventsService(eventsRepository)
@@ -92,9 +117,10 @@ func main() {
 		core_http_middleware.Panic(),
 	)
 	apiVersionRouter := core_http_server.NewAPIVersionRouter(core_http_server.ApiVersion1)
-	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
-	apiVersionRouter.RegisterRoutes(eventsTransportHTTP.Routes()...)
-	apiVersionRouter.RegisterRoutes(participantsTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes(authMiddleware)...)
+	apiVersionRouter.RegisterRoutes(authTransportHTTP.Routes(authMiddleware)...)
+	apiVersionRouter.RegisterRoutes(eventsTransportHTTP.Routes(authMiddleware)...)
+	apiVersionRouter.RegisterRoutes(participantsTransportHTTP.Routes(authMiddleware)...)
 
 	httpServer.RegisterAPIRouters(
 		apiVersionRouter,
