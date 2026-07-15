@@ -2,3 +2,5 @@
 out/
 node_modules/
 dist/
+AGENTS.md
+docs/
