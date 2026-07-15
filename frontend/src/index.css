@@ -35,6 +35,123 @@ a {
   text-decoration: none;
 }
 
+.event-map-marker {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 42px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.event-map-marker__pin {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  transform: rotate(45deg);
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  background: #1f8a5b;
+  box-shadow: 0 6px 16px rgba(23, 23, 23, 0.3);
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+}
+
+.event-map-marker__dot {
+  width: 10px;
+  height: 10px;
+  transform: rotate(-45deg);
+  border-radius: 999px;
+  background: white;
+}
+
+.event-map-marker:hover .event-map-marker__pin,
+.event-map-marker:focus-visible .event-map-marker__pin {
+  transform: rotate(45deg) scale(1.1);
+  background: #171717;
+}
+
+.event-map-marker:focus-visible {
+  outline: none;
+}
+
+.event-map-marker:focus-visible .event-map-marker__pin {
+  box-shadow:
+    0 0 0 3px rgba(47, 184, 121, 0.45),
+    0 6px 16px rgba(23, 23, 23, 0.3);
+}
+
+.event-map-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  visibility: hidden;
+  width: max-content;
+  max-width: 240px;
+  transform: translate(-50%, 4px);
+  border: 0;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 10px 28px rgba(23, 23, 23, 0.16);
+  color: #171717;
+  font-family: inherit;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  text-align: left;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    visibility 150ms ease;
+}
+
+.event-map-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: white;
+  content: "";
+}
+
+.event-map-marker:hover .event-map-tooltip,
+.event-map-marker:focus-visible .event-map-tooltip {
+  visibility: visible;
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+.event-map-tooltip__content {
+  display: grid;
+  max-width: 240px;
+  gap: 3px;
+  padding: 10px 12px;
+}
+
+.event-map-tooltip__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-map-tooltip__date {
+  color: rgba(23, 23, 23, 0.6);
+  font-size: 12px;
+}
+
+.event-map-tooltip__action {
+  color: #1f8a5b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 @layer components {
   .focus-ring {
     @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-mist;

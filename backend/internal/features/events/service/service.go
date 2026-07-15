@@ -21,6 +21,7 @@ type EventsRepository interface {
 		latitude *float64,
 		longitude *float64,
 		radius *int,
+		bounds *domain.EventBounds,
 		limit *int,
 		offset *int,
 	) ([]domain.Event, error)

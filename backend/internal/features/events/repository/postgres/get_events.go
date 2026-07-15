@@ -12,6 +12,7 @@ func (r *EventsRepository) GetEvents(
 	latitude *float64,
 	longitude *float64,
 	radius *int,
+	bounds *domain.EventBounds,
 	limit *int,
 	offset *int,
 ) ([]domain.Event, error) {
@@ -36,10 +37,25 @@ func (r *EventsRepository) GetEvents(
         	$3::double precision
     	)
 	)
+	AND (
+		$4::double precision IS NULL
+		OR ST_Intersects(
+			location,
+			ST_MakeEnvelope($4, $5, $6, $7, 4326)::geography
+		)
+	)
 	ORDER BY id ASC
-	LIMIT $4
-	OFFSET $5;
+	LIMIT $8
+	OFFSET $9;
 	`
+
+	var west, south, east, north *float64
+	if bounds != nil {
+		west = &bounds.West
+		south = &bounds.South
+		east = &bounds.East
+		north = &bounds.North
+	}
 
 	rows, err := r.pool.Query(
 		ctx,
@@ -47,6 +63,10 @@ func (r *EventsRepository) GetEvents(
 		latitude,
 		longitude,
 		radius,
+		west,
+		south,
+		east,
+		north,
 		limit,
 		offset,
 	)

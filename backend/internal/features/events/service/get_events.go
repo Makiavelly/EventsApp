@@ -13,6 +13,7 @@ func (s *EventsService) GetEvents(
 	latitude *float64,
 	longitude *float64,
 	radius *int,
+	bounds *domain.EventBounds,
 	limit *int,
 	offset *int,
 ) ([]domain.Event, error) {
@@ -50,6 +51,12 @@ func (s *EventsService) GetEvents(
 		)
 	}
 
+	if bounds != nil {
+		if err := bounds.Validate(); err != nil {
+			return nil, fmt.Errorf("validate event bounds: %w", err)
+		}
+	}
+
 	if limit != nil && *limit < 0 {
 		return nil, fmt.Errorf("limit must be non-negative: %w", core_errors.ErrInvalidArgument)
 	}
@@ -63,6 +70,7 @@ func (s *EventsService) GetEvents(
 		latitude,
 		longitude,
 		radius,
+		bounds,
 		limit,
 		offset,
 	)

@@ -1,13 +1,17 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { Filter, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEvents } from "../api/queries";
-import type { EventsFilters } from "../api/types";
+import type { EventBounds, EventsFilters } from "../api/types";
 import { Button } from "../components/Button";
 import { EventCard } from "../components/EventCard";
 import { Input } from "../components/Input";
 import { StatusView } from "../components/StatusView";
 import { errorMessage, toOptionalNumber } from "../utils/format";
+
+const EventMap = lazy(() =>
+  import("../components/EventMap").then((module) => ({ default: module.EventMap })),
+);
 
 type FilterForm = {
   latitude: string;
@@ -17,9 +21,15 @@ type FilterForm = {
 
 export function EventsPage() {
   const [form, setForm] = useState<FilterForm>({ latitude: "", longitude: "", radius: "" });
-  const [filters, setFilters] = useState<EventsFilters>({ limit: 30, offset: 0 });
+  const [filters, setFilters] = useState<EventsFilters>({ limit: 500, offset: 0 });
+  const [mapBounds, setMapBounds] = useState<EventBounds>();
 
-  const { data: events = [], isLoading, isError, error, isFetching } = useEvents(filters);
+  const queryFilters = useMemo(
+    () => ({ ...filters, bounds: mapBounds }),
+    [filters, mapBounds],
+  );
+
+  const { data: events = [], isLoading, isError, error, isFetching } = useEvents(queryFilters, mapBounds !== undefined);
 
   const activeFilterCount = useMemo(
     () => [filters.latitude, filters.longitude, filters.radius].filter((value) => value !== undefined).length,
@@ -29,7 +39,7 @@ export function EventsPage() {
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFilters({
-      limit: 30,
+      limit: 500,
       offset: 0,
       latitude: toOptionalNumber(form.latitude),
       longitude: toOptionalNumber(form.longitude),
@@ -39,8 +49,23 @@ export function EventsPage() {
 
   function resetFilters() {
     setForm({ latitude: "", longitude: "", radius: "" });
-    setFilters({ limit: 30, offset: 0 });
+    setFilters({ limit: 500, offset: 0 });
   }
+
+  const updateMapBounds = useCallback((bounds: EventBounds) => {
+    setMapBounds((currentBounds) => {
+      if (
+        currentBounds?.west === bounds.west &&
+        currentBounds.south === bounds.south &&
+        currentBounds.east === bounds.east &&
+        currentBounds.north === bounds.north
+      ) {
+        return currentBounds;
+      }
+
+      return bounds;
+    });
+  }, []);
 
   return (
     <div className="grid gap-6">
@@ -102,7 +127,11 @@ export function EventsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink/60">
-          {isFetching ? "Обновляем список..." : `Найдено событий: ${events.length}`}
+          {mapBounds === undefined
+            ? "Определяем видимую область карты..."
+            : isFetching
+              ? "Обновляем события в области карты..."
+              : `Найдено в области карты: ${events.length}`}
         </p>
         {activeFilterCount > 0 ? (
           <span className="rounded-full bg-meadow/10 px-3 py-1 text-xs font-semibold text-meadow">
@@ -111,14 +140,28 @@ export function EventsPage() {
         ) : null}
       </div>
 
-      {isLoading ? (
+      <Suspense
+        fallback={
+          <StatusView
+            title="Загружаем карту"
+            description="Подготавливаем интерактивную карту событий."
+            tone="loading"
+          />
+        }
+      >
+        <EventMap events={events} isLoading={isFetching} onBoundsChange={updateMapBounds} />
+      </Suspense>
+
+      {mapBounds === undefined ? (
+        <StatusView title="Инициализируем карту" description="Определяем область для первого поиска." tone="loading" />
+      ) : isLoading ? (
         <StatusView title="Загружаем события" description="Запрашиваем список у Go backend." tone="loading" />
       ) : isError ? (
         <StatusView title="Не удалось загрузить события" description={errorMessage(error)} tone="error" />
       ) : events.length === 0 ? (
         <StatusView
           title="Событий пока нет"
-          description="Создайте первое событие или измените фильтры поиска."
+          description="В этой области событий нет. Переместите карту или измените фильтры поиска."
           action={
             <Link to="/create">
               <Button>Создать событие</Button>

@@ -24,10 +24,18 @@ export type CreateEventPayload = {
   date_meeting?: string;
 };
 
+export type EventBounds = {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+};
+
 export type EventsFilters = {
   latitude?: number;
   longitude?: number;
   radius?: number;
+  bounds?: EventBounds;
   limit?: number;
   offset?: number;
 };

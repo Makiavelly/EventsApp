@@ -187,9 +187,14 @@ export const api = {
         latitude: filters.latitude,
         longitude: filters.longitude,
         radius: filters.radius,
+        west: filters.bounds?.west,
+        south: filters.bounds?.south,
+        east: filters.bounds?.east,
+        north: filters.bounds?.north,
         limit: filters.limit,
         offset: filters.offset,
       }),
+      { signal },
     );
   },
 
