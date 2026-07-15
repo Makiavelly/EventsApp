@@ -7,6 +7,13 @@ import (
 	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
 )
 
+const (
+	EventTitleMinLength       = 1
+	EventTitleMaxLength       = 50
+	EventDescriptionMinLength = 1
+	EventDescriptionMaxLength = 300
+)
+
 type Event struct {
 	ID          int
 	CreatorID   int
@@ -52,35 +59,61 @@ func NewEventUninitialized(
 }
 
 func (e *Event) Validate() error {
-	titleLen := len([]rune(e.Title))
-	if titleLen < 1 || titleLen > 50 {
+	if err := ValidateEventTitle(e.Title); err != nil {
+		return err
+	}
+	if err := ValidateEventDescription(e.Description); err != nil {
+		return err
+	}
+	if err := ValidateEventLocation(e.Location); err != nil {
+		return err
+	}
+	if err := ValidateEventDateMeeting(e.DateMeeting, time.Now()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ValidateEventTitle(title string) error {
+	titleLen := len([]rune(title))
+	if titleLen < EventTitleMinLength || titleLen > EventTitleMaxLength {
 		return fmt.Errorf(
-			"invalid 'Title' len: %d: %w",
+			"invalid 'Title' length: %d: %w",
 			titleLen,
 			core_errors.ErrInvalidArgument,
 		)
 	}
 
-	if e.Description != nil {
-		descriptionLen := len([]rune(*e.Description))
-		if descriptionLen < 1 || descriptionLen > 300 {
+	return nil
+}
+
+func ValidateEventDescription(description *string) error {
+	if description != nil {
+		descriptionLen := len([]rune(*description))
+		if descriptionLen < EventDescriptionMinLength ||
+			descriptionLen > EventDescriptionMaxLength {
 			return fmt.Errorf(
-				"invalid 'Description' len: %d: %w",
+				"invalid 'Description' length: %d: %w",
 				descriptionLen,
 				core_errors.ErrInvalidArgument,
 			)
 		}
 	}
 
-	if e.Location != nil {
-		if e.Location.Latitude < -90 || e.Location.Latitude > 90 {
+	return nil
+}
+
+func ValidateEventLocation(location *EventLocation) error {
+	if location != nil {
+		if location.Latitude < -90 || location.Latitude > 90 {
 			return fmt.Errorf(
 				"'Latitude' must be between -90 and 90: %w",
 				core_errors.ErrInvalidArgument,
 			)
 		}
 
-		if e.Location.Longitude < -180 || e.Location.Longitude > 180 {
+		if location.Longitude < -180 || location.Longitude > 180 {
 			return fmt.Errorf(
 				"'Longitude' must be between -180 and 180: %w",
 				core_errors.ErrInvalidArgument,
@@ -88,20 +121,21 @@ func (e *Event) Validate() error {
 		}
 	}
 
-	if e.DateMeeting != nil {
-		var (
-			now     = time.Now()
-			maxDate = now.AddDate(1, 0, 0)
-		)
+	return nil
+}
 
-		if e.DateMeeting.Before(now) {
+func ValidateEventDateMeeting(dateMeeting *time.Time, now time.Time) error {
+	if dateMeeting != nil {
+		maxDate := now.AddDate(1, 0, 0)
+
+		if !dateMeeting.After(now) {
 			return fmt.Errorf(
 				"'DateMeeting' must be in the future: %w",
 				core_errors.ErrInvalidArgument,
 			)
 		}
 
-		if e.DateMeeting.After(maxDate) {
+		if dateMeeting.After(maxDate) {
 			return fmt.Errorf(
 				"'DateMeeting' must not be later than one year from now: %w",
 				core_errors.ErrInvalidArgument,
@@ -134,8 +168,31 @@ func NewEventPatch(
 }
 
 func (p *EventPatch) Validate() error {
-	if p.Title.Set && p.Title.Value == nil {
-		return fmt.Errorf("'Title' can't be patched to NULL: %w", core_errors.ErrInvalidArgument)
+	if p.Title.Set {
+		if p.Title.Value == nil {
+			return fmt.Errorf("'Title' can't be patched to NULL: %w", core_errors.ErrInvalidArgument)
+		}
+		if err := ValidateEventTitle(*p.Title.Value); err != nil {
+			return err
+		}
+	}
+
+	if p.Description.Set {
+		if err := ValidateEventDescription(p.Description.Value); err != nil {
+			return err
+		}
+	}
+
+	if p.Location.Set {
+		if err := ValidateEventLocation(p.Location.Value); err != nil {
+			return err
+		}
+	}
+
+	if p.DateMeeting.Set {
+		if err := ValidateEventDateMeeting(p.DateMeeting.Value, time.Now()); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -164,8 +221,14 @@ func (e *Event) ApplyPatch(patch EventPatch) error {
 		tmp.DateMeeting = patch.DateMeeting.Value
 	}
 
-	if err := tmp.Validate(); err != nil {
-		return fmt.Errorf("validate patched event: %w", err)
+	if err := ValidateEventTitle(tmp.Title); err != nil {
+		return fmt.Errorf("validate patched event title: %w", err)
+	}
+	if err := ValidateEventDescription(tmp.Description); err != nil {
+		return fmt.Errorf("validate patched event description: %w", err)
+	}
+	if err := ValidateEventLocation(tmp.Location); err != nil {
+		return fmt.Errorf("validate patched event location: %w", err)
 	}
 
 	*e = tmp

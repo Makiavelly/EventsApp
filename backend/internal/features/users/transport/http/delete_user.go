@@ -15,9 +15,12 @@ import (
 // @Summary 	Удалить пользователя
 // @Description Удалить пользователя по ID
 // @Tags 		users
+// @Security 	BearerAuth
 // @Param 		id path int true "ID пользователя"
 // @Success 	204 "Пользователь успешно удален"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	401 {object} core_http_response.ErrorResponse "Unauthorized"
+// @Failure 	403 {object} core_http_response.ErrorResponse "Forbidden"
 // @Failure 	404 {object} core_http_response.ErrorResponse "User not found"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/users/{id} [delete]

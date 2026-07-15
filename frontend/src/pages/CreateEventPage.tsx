@@ -33,6 +33,7 @@ function dateTimeLocalValue(date: Date) {
 export function CreateEventPage() {
   const [form, setForm] = useState<CreateEventForm>(initialForm);
   const [dateMeetingError, setDateMeetingError] = useState<string>();
+  const [locationError, setLocationError] = useState<string>();
   const [createdId, setCreatedId] = useState<number | null>(null);
   const createEvent = useCreateEvent();
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ export function CreateEventPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setLocationError(undefined);
 
     const payload: CreateEventPayload = {
       title: form.title.trim(),
@@ -59,7 +61,14 @@ export function CreateEventPage() {
       payload.description = form.description.trim();
     }
 
-    if (form.latitude.trim() && form.longitude.trim()) {
+    const hasLatitude = form.latitude.trim() !== "";
+    const hasLongitude = form.longitude.trim() !== "";
+    if (hasLatitude !== hasLongitude) {
+      setLocationError("Укажите обе координаты или очистите обе.");
+      return;
+    }
+
+    if (hasLatitude && hasLongitude) {
       payload.location = {
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
@@ -145,6 +154,10 @@ export function CreateEventPage() {
                 <Input
                   label="Широта"
                   name="latitude"
+                  type="number"
+                  step="any"
+                  min={-90}
+                  max={90}
                   inputMode="decimal"
                   value={form.latitude}
                   onChange={(event) => updateField("latitude", event.target.value)}
@@ -153,6 +166,10 @@ export function CreateEventPage() {
                 <Input
                   label="Долгота"
                   name="longitude"
+                  type="number"
+                  step="any"
+                  min={-180}
+                  max={180}
                   inputMode="decimal"
                   value={form.longitude}
                   onChange={(event) => updateField("longitude", event.target.value)}
@@ -169,6 +186,7 @@ export function CreateEventPage() {
                   onChange={(event) => updateField("dateMeeting", event.target.value)}
                 />
               </div>
+              {locationError ? <p className="mt-3 text-sm text-clay">{locationError}</p> : null}
             </FormField>
 
             {createEvent.isError ? <p className="mt-5 text-sm text-clay">{errorMessage(createEvent.error)}</p> : null}
@@ -180,6 +198,7 @@ export function CreateEventPage() {
                 onClick={() => {
                   setForm(initialForm);
                   setDateMeetingError(undefined);
+                  setLocationError(undefined);
                 }}
               >
                 Очистить

@@ -1,7 +1,6 @@
 package events_transport_http
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -21,56 +20,8 @@ type PatchEventRequest struct {
 }
 
 func (r *PatchEventRequest) Validate() error {
-	if r.Title.Set {
-		if r.Title.Value == nil {
-			return fmt.Errorf("'Title' can't be NULL")
-		}
-
-		titleLen := len([]rune(*r.Title.Value))
-		if titleLen < 1 || titleLen > 50 {
-			return fmt.Errorf("'Title' must be between 1 and 50 symbols")
-		}
-	}
-
-	if r.Description.Set {
-		if r.Description.Value != nil {
-			descriptionLen := len([]rune(*r.Description.Value))
-			if descriptionLen < 1 || descriptionLen > 300 {
-				return fmt.Errorf("'Description' must be between 1 and 300 symbols")
-			}
-		}
-	}
-
-	if r.Location.Set {
-		if r.Location.Value != nil {
-			if r.Location.Value.Latitude < -90 || r.Location.Value.Latitude > 90 {
-				return fmt.Errorf("'Latitude' must be between -90 and 90")
-			}
-
-			if r.Location.Value.Longitude < -180 || r.Location.Value.Longitude > 180 {
-				return fmt.Errorf("'Longitude' must be between -180 and 180")
-			}
-		}
-	}
-
-	if r.DateMeeting.Set {
-		if r.DateMeeting.Value != nil {
-			var (
-				now     = time.Now()
-				maxDate = now.AddDate(1, 0, 0)
-			)
-
-			if r.DateMeeting.Value.Before(now) {
-				return fmt.Errorf("'DateMeeting' must be in the future")
-			}
-
-			if r.DateMeeting.Value.After(maxDate) {
-				return fmt.Errorf("'DateMeeting' must not be later than one year from now")
-			}
-		}
-	}
-
-	return nil
+	patch := eventPatchFromRequest(*r)
+	return patch.Validate()
 }
 
 type PatchEventResponse EventDTOResponse
@@ -90,7 +41,10 @@ type PatchEventResponse EventDTOResponse
 // @Param 		request body PatchEventRequest true "Patch event тело запроса"
 // @Success 	200 {object} PatchEventResponse "Успешно обновленное событие"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	401 {object} core_http_response.ErrorResponse "Unauthorized"
+// @Failure 	403 {object} core_http_response.ErrorResponse "Forbidden"
 // @Failure 	404 {object} core_http_response.ErrorResponse "Event not found"
+// @Failure 	413 {object} core_http_response.ErrorResponse "Payload too large"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/events/{id} [patch]
 func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) {

@@ -11,7 +11,10 @@ import (
 	core_postgres_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool"
 )
 
-func (r *UsersRepository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
+func (r *UsersRepository) GetUserByEmail(
+	ctx context.Context,
+	email string,
+) (domain.UserAccount, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
@@ -21,13 +24,21 @@ func (r *UsersRepository) GetUserByEmail(ctx context.Context, email string) (dom
 		WHERE lower(email) = lower($1);
 	`, strings.TrimSpace(email))
 
-	var model UserModel
-	if err := row.Scan(&model.ID, &model.Name, &model.Email, &model.Password); err != nil {
+	var model UserAccountModel
+	if err := row.Scan(
+		&model.ID,
+		&model.Name,
+		&model.Email,
+		&model.PasswordHash,
+	); err != nil {
 		if errors.Is(err, core_postgres_pool.ErrNoRows) {
-			return domain.User{}, fmt.Errorf("user with this email: %w", core_errors.ErrNotFound)
+			return domain.UserAccount{}, fmt.Errorf("user with this email: %w", core_errors.ErrNotFound)
 		}
-		return domain.User{}, fmt.Errorf("scan error: %w", err)
+		return domain.UserAccount{}, fmt.Errorf("scan error: %w", err)
 	}
 
-	return domain.NewUser(model.ID, model.Name, model.Email, model.Password), nil
+	return domain.UserAccount{
+		User:         domain.NewUser(model.ID, model.Name, model.Email),
+		PasswordHash: model.PasswordHash,
+	}, nil
 }

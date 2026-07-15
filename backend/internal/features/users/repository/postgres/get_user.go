@@ -15,7 +15,7 @@ func (r *UsersRepository) GetUser(ctx context.Context, id int) (domain.User, err
 	defer cancel()
 
 	query := `
-	SELECT id, name, email, password
+	SELECT id, name, email
 	FROM eventsapp.users
 	WHERE id=$1;
 	`
@@ -26,7 +26,6 @@ func (r *UsersRepository) GetUser(ctx context.Context, id int) (domain.User, err
 		&userModel.ID,
 		&userModel.Name,
 		&userModel.Email,
-		&userModel.Password,
 	)
 	if err != nil {
 		if errors.Is(err, core_postgres_pool.ErrNoRows) {
@@ -40,7 +39,6 @@ func (r *UsersRepository) GetUser(ctx context.Context, id int) (domain.User, err
 		userModel.ID,
 		userModel.Name,
 		userModel.Email,
-		userModel.Password,
 	)
 
 	return userDomain, nil

@@ -3,6 +3,7 @@ import { AppLayout } from "./layouts/AppLayout";
 import { CreateEventPage } from "./pages/CreateEventPage";
 import { EventDetailsPage } from "./pages/EventDetailsPage";
 import { EventsPage } from "./pages/EventsPage";
+import { EditEventPage } from "./pages/EditEventPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { AuthPage } from "./pages/AuthPage";
@@ -16,7 +17,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <EventsPage /> },
       { path: "events/:id", element: <EventDetailsPage /> },
-	  { path: "auth", element: <AuthPage /> },
+      { path: "events/:id/edit", element: <ProtectedRoute><EditEventPage /></ProtectedRoute> },
+      { path: "auth", element: <AuthPage /> },
       { path: "create", element: <ProtectedRoute><CreateEventPage /></ProtectedRoute> },
       { path: "profile", element: <ProtectedRoute><ProfilePage /></ProtectedRoute> },
       { path: "*", element: <Navigate to="/" replace /> },

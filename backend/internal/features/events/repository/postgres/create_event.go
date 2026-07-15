@@ -85,6 +85,12 @@ func (r *EventsRepository) CreateEvent(
 				core_errors.ErrNotFound,
 			)
 		}
+		if errors.Is(err, core_postgres_pool.ErrViolatesCheck) {
+			return domain.Event{}, fmt.Errorf(
+				"event date violates database constraints: %w",
+				core_errors.ErrInvalidArgument,
+			)
+		}
 
 		return domain.Event{}, fmt.Errorf("scan error: %w", err)
 	}

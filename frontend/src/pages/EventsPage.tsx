@@ -23,13 +23,17 @@ export function EventsPage() {
   const [form, setForm] = useState<FilterForm>({ latitude: "", longitude: "", radius: "" });
   const [filters, setFilters] = useState<EventsFilters>({ limit: 500, offset: 0 });
   const [mapBounds, setMapBounds] = useState<EventBounds>();
+  const [filterError, setFilterError] = useState<string>();
 
   const queryFilters = useMemo(
     () => ({ ...filters, bounds: mapBounds }),
     [filters, mapBounds],
   );
 
-  const { data: events = [], isLoading, isError, error, isFetching } = useEvents(queryFilters, mapBounds !== undefined);
+  const listQuery = useEvents(filters);
+  const mapQuery = useEvents(queryFilters, mapBounds !== undefined);
+  const events = listQuery.data ?? [];
+  const mapEvents = mapQuery.data ?? [];
 
   const activeFilterCount = useMemo(
     () => [filters.latitude, filters.longitude, filters.radius].filter((value) => value !== undefined).length,
@@ -38,17 +42,40 @@ export function EventsPage() {
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFilterError(undefined);
+    const hasLatitude = form.latitude.trim() !== "";
+    const hasLongitude = form.longitude.trim() !== "";
+    const hasRadius = form.radius.trim() !== "";
+    const hasAnyLocationFilter = hasLatitude || hasLongitude || hasRadius;
+    if (hasAnyLocationFilter && !(hasLatitude && hasLongitude && hasRadius)) {
+      setFilterError("Для поиска по радиусу укажите широту, долготу и радиус вместе.");
+      return;
+    }
+
+    const latitude = toOptionalNumber(form.latitude);
+    const longitude = toOptionalNumber(form.longitude);
+    const radius = toOptionalNumber(form.radius);
+    if (
+      hasAnyLocationFilter &&
+      (latitude === undefined || longitude === undefined || radius === undefined ||
+        latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || radius < 0 || radius > 100_000)
+    ) {
+      setFilterError("Проверьте координаты и радиус от 0 до 100 000 метров.");
+      return;
+    }
+
     setFilters({
       limit: 500,
       offset: 0,
-      latitude: toOptionalNumber(form.latitude),
-      longitude: toOptionalNumber(form.longitude),
-      radius: toOptionalNumber(form.radius),
+      latitude,
+      longitude,
+      radius,
     });
   }
 
   function resetFilters() {
     setForm({ latitude: "", longitude: "", radius: "" });
+    setFilterError(undefined);
     setFilters({ limit: 500, offset: 0 });
   }
 
@@ -96,6 +123,10 @@ export function EventsPage() {
         <Input
           label="Широта"
           name="latitude"
+          type="number"
+          step="any"
+          min={-90}
+          max={90}
           inputMode="decimal"
           placeholder="57.34456"
           value={form.latitude}
@@ -104,6 +135,10 @@ export function EventsPage() {
         <Input
           label="Долгота"
           name="longitude"
+          type="number"
+          step="any"
+          min={-180}
+          max={180}
           inputMode="decimal"
           placeholder="-30.34560"
           value={form.longitude}
@@ -112,6 +147,9 @@ export function EventsPage() {
         <Input
           label="Радиус"
           name="radius"
+          type="number"
+          min={0}
+          max={100000}
           inputMode="numeric"
           placeholder="5000"
           value={form.radius}
@@ -123,15 +161,16 @@ export function EventsPage() {
         <Button type="button" variant="secondary" onClick={resetFilters}>
           Сбросить
         </Button>
+        {filterError ? <p className="text-sm text-clay md:col-span-5">{filterError}</p> : null}
       </form>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink/60">
           {mapBounds === undefined
             ? "Определяем видимую область карты..."
-            : isFetching
+            : mapQuery.isFetching
               ? "Обновляем события в области карты..."
-              : `Найдено в области карты: ${events.length}`}
+              : `Найдено в области карты: ${mapEvents.length}`}
         </p>
         {activeFilterCount > 0 ? (
           <span className="rounded-full bg-meadow/10 px-3 py-1 text-xs font-semibold text-meadow">
@@ -149,15 +188,13 @@ export function EventsPage() {
           />
         }
       >
-        <EventMap events={events} isLoading={isFetching} onBoundsChange={updateMapBounds} />
+        <EventMap events={mapEvents} isLoading={mapQuery.isFetching} onBoundsChange={updateMapBounds} />
       </Suspense>
 
-      {mapBounds === undefined ? (
-        <StatusView title="Инициализируем карту" description="Определяем область для первого поиска." tone="loading" />
-      ) : isLoading ? (
+      {listQuery.isLoading ? (
         <StatusView title="Загружаем события" description="Запрашиваем список у Go backend." tone="loading" />
-      ) : isError ? (
-        <StatusView title="Не удалось загрузить события" description={errorMessage(error)} tone="error" />
+      ) : listQuery.isError ? (
+        <StatusView title="Не удалось загрузить события" description={errorMessage(listQuery.error)} tone="error" />
       ) : events.length === 0 ? (
         <StatusView
           title="Событий пока нет"

@@ -14,15 +14,6 @@ func (r *AuthRepository) CreateSession(
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
-	cleanupQuery := `
-	DELETE FROM eventsapp.auth_sessions
-	WHERE expires_at < now() - interval '7 days'
-		OR revoked_at < now() - interval '7 days';
-	`
-	if _, err := r.pool.Exec(ctx, cleanupQuery); err != nil {
-		return fmt.Errorf("clean up expired refresh sessions: %w", err)
-	}
-
 	query := `
 	INSERT INTO eventsapp.auth_sessions (
 		id,

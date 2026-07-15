@@ -10,8 +10,8 @@ type ParticipantsService struct {
 	participantsRepository ParticipantsRepository
 }
 
-func NewParticipantService(participantsRepositury ParticipantsRepository) *ParticipantsService {
-	return &ParticipantsService{participantsRepository: participantsRepositury}
+func NewParticipantService(participantsRepository ParticipantsRepository) *ParticipantsService {
+	return &ParticipantsService{participantsRepository: participantsRepository}
 }
 
 type ParticipantsRepository interface {
@@ -31,7 +31,7 @@ type ParticipantsRepository interface {
 		eventID *int,
 		limit *int,
 		offset *int,
-	) ([]domain.EventParticipants, error)
+	) ([]domain.EventParticipant, error)
 
 	PatchParticipant(
 		ctx context.Context,

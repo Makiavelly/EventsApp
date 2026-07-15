@@ -1,29 +1,72 @@
-import { LogOut, Mail, UserRound } from "lucide-react";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import { LogOut, Mail, Save, Trash2, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { Input } from "../components/Input";
 import { errorMessage } from "../utils/format";
 
 export function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile, deleteAccount } = useAuth();
   const navigate = useNavigate();
-  const [logoutError, setLogoutError] = useState<string | null>(null);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [name, setName] = useState(user?.name ?? "");
+  const [password, setPassword] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"save" | "logout" | "delete" | null>(null);
 
   if (!user) return null;
+  const currentUser = user;
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setActionError(null);
+    setSuccessMessage(null);
+    const payload = {
+      ...(name.trim() !== currentUser.name ? { name: name.trim() } : {}),
+      ...(password ? { password } : {}),
+    };
+    if (Object.keys(payload).length === 0) {
+      setSuccessMessage("Изменений нет.");
+      return;
+    }
+
+    setPendingAction("save");
+    try {
+      await updateProfile(payload);
+      setPassword("");
+      setSuccessMessage("Профиль обновлён.");
+    } catch (error) {
+      setActionError(errorMessage(error));
+    } finally {
+      setPendingAction(null);
+    }
+  }
 
   async function handleLogout() {
-    setLogoutError(null);
-    setIsLoggingOut(true);
+    setActionError(null);
+    setPendingAction("logout");
     try {
       await logout();
       navigate("/", { replace: true });
     } catch (error) {
-      setLogoutError(errorMessage(error));
-    } finally {
-      setIsLoggingOut(false);
+      setActionError(errorMessage(error));
+      setPendingAction(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Удалить аккаунт, созданные события и все данные участия? Это действие необратимо.")) return;
+
+    setActionError(null);
+    setPendingAction("delete");
+    try {
+      await deleteAccount();
+      navigate("/", { replace: true });
+    } catch (error) {
+      setActionError(errorMessage(error));
+      setPendingAction(null);
     }
   }
 
@@ -48,11 +91,44 @@ export function ProfilePage() {
             </p>
           </div>
         </div>
-        <div className="mt-7 border-t border-ink/10 pt-5">
-          <Button variant="danger" icon={<LogOut size={17} />} onClick={handleLogout} disabled={isLoggingOut}>
-            {isLoggingOut ? "Выходим..." : "Выйти из аккаунта"}
+
+        <form onSubmit={handleSave} className="mt-7 grid gap-4 border-t border-ink/10 pt-5">
+          <Input
+            label="Имя"
+            name="name"
+            required
+            minLength={1}
+            maxLength={100}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Input
+            label="Новый пароль"
+            name="password"
+            type="password"
+            minLength={6}
+            maxLength={72}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            hint="Оставьте поле пустым, чтобы не менять пароль."
+          />
+          <div className="flex justify-end">
+            <Button type="submit" icon={<Save size={17} />} disabled={pendingAction !== null}>
+              {pendingAction === "save" ? "Сохраняем..." : "Сохранить изменения"}
+            </Button>
+          </div>
+        </form>
+
+        {actionError ? <p className="mt-4 text-sm text-clay">{actionError}</p> : null}
+        {successMessage ? <p className="mt-4 text-sm font-medium text-meadow">{successMessage}</p> : null}
+
+        <div className="mt-7 flex flex-wrap gap-3 border-t border-ink/10 pt-5">
+          <Button variant="secondary" icon={<LogOut size={17} />} onClick={handleLogout} disabled={pendingAction !== null}>
+            {pendingAction === "logout" ? "Выходим..." : "Выйти"}
           </Button>
-          {logoutError ? <p className="mt-3 text-sm text-clay">{logoutError}</p> : null}
+          <Button variant="danger" icon={<Trash2 size={17} />} onClick={handleDelete} disabled={pendingAction !== null}>
+            {pendingAction === "delete" ? "Удаляем..." : "Удалить аккаунт"}
+          </Button>
         </div>
       </Card>
     </div>

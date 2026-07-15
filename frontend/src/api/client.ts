@@ -5,9 +5,12 @@ import type {
   CreateParticipantPayload,
   CreateUserPayload,
   Event,
-  EventParticipants,
+  EventParticipant,
   EventsFilters,
   LoginPayload,
+  ParticipantStatus,
+  PatchEventPayload,
+  PatchUserPayload,
   User,
 } from "./types";
 
@@ -16,7 +19,7 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
 export const API_BASE_URL =
   configuredBaseUrl && configuredBaseUrl.trim().length > 0
     ? configuredBaseUrl.replace(/\/$/, "")
-    : "http://172.20.247.149:5050/api/v1";
+    : "/api/v1";
 
 let accessToken: string | null = null;
 let refreshPromise: Promise<AuthResponse> | null = null;
@@ -49,7 +52,12 @@ function expireAuthentication() {
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>) {
-  const url = new URL(`${API_BASE_URL}${path}`);
+  const origin = globalThis.location?.origin ?? "http://localhost";
+  const baseUrl = new URL(
+    API_BASE_URL.endsWith("/") ? API_BASE_URL : API_BASE_URL + "/",
+    origin,
+  );
+  const url = new URL(path.replace(/^\//, ""), baseUrl);
 
   Object.entries(params ?? {}).forEach(([key, value]) => {
     if (value !== undefined && value !== "") {
@@ -172,16 +180,12 @@ export const api = {
     return refreshAuthentication();
   },
 
-  me() {
-    return request<User>(buildUrl("/auth/me"));
-  },
-
   async logout() {
-	await request<void>(buildUrl("/auth/logout"), { method: "POST" }, false);
-	setAccessToken(null);
+    await request<void>(buildUrl("/auth/logout"), { method: "POST" }, false);
+    setAccessToken(null);
   },
 
-  getEvents(filters: EventsFilters = {}) {
+  getEvents(filters: EventsFilters = {}, signal?: AbortSignal) {
     return request<Event[]>(
       buildUrl("/events", {
         latitude: filters.latitude,
@@ -209,16 +213,37 @@ export const api = {
     });
   },
 
-  getUsers(limit = 20, offset = 0) {
-    return request<User[]>(buildUrl("/users", { limit, offset }));
+  patchEvent(id: number, payload: PatchEventPayload) {
+    return request<Event>(buildUrl("/events/" + id), {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
   },
 
-  getUser(id: number) {
-    return request<User>(buildUrl(`/users/${id}`));
+  deleteEvent(id: number) {
+    return request<void>(buildUrl("/events/" + id), { method: "DELETE" });
+  },
+
+  patchUser(id: number, payload: PatchUserPayload) {
+    return request<User>(buildUrl("/users/" + id), {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteUser(id: number) {
+    await request<void>(buildUrl("/users/" + id), { method: "DELETE" });
+    try {
+      await request<void>(buildUrl("/auth/logout"), { method: "POST" }, false);
+    } catch {
+      // The account and its server-side sessions are already deleted.
+    } finally {
+      setAccessToken(null);
+    }
   },
 
   getParticipants(eventId?: number) {
-    return request<EventParticipants[]>(buildUrl("/participants", { event_id: eventId }));
+    return request<EventParticipant[]>(buildUrl("/participants", { event_id: eventId, limit: 500, offset: 0 }));
   },
 
   createParticipant(payload: CreateParticipantPayload) {
@@ -226,5 +251,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  },
+
+  patchParticipant(eventId: number, status: ParticipantStatus) {
+    return request(buildUrl("/participants", { event_id: eventId }), {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  deleteParticipant(eventId: number) {
+    return request<void>(
+      buildUrl("/participants", { event_id: eventId }),
+      { method: "DELETE" },
+    );
   },
 };

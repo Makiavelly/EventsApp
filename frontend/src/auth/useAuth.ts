@@ -1,5 +1,10 @@
 import { createContext, useContext } from "react";
-import type { CreateUserPayload, LoginPayload, User } from "../api/types";
+import type {
+  CreateUserPayload,
+  LoginPayload,
+  PatchUserPayload,
+  User,
+} from "../api/types";
 
 export type AuthContextValue = {
   user: User | null;
@@ -7,6 +12,8 @@ export type AuthContextValue = {
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: CreateUserPayload) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (payload: PatchUserPayload) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

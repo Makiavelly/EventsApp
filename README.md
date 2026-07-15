@@ -1,46 +1,54 @@
 # EventsApp
 
-## Structure
+EventsApp — приложение для создания событий, поиска по карте и управления участием. Backend написан на Go, данные хранятся в PostgreSQL/PostGIS, frontend — React + TypeScript.
 
-- `backend/` - Go backend, migrations, swagger docs, backend Dockerfile.
-- `frontend/` - React + TypeScript + Vite frontend.
-- `docker-compose.yaml` - shared local infrastructure and backend deployment.
-- `out/` - local logs and PostgreSQL data, ignored by git.
+## Быстрый локальный запуск
 
-## Backend
-
-```bash
-cd backend
-make eventsapp-run
-```
-
-Docker/DB commands can be run either from `backend/` or through the root Makefile:
+1. Скопируйте `.env.example` в `.env` и задайте PostgreSQL credentials и случайный `AUTH_SECRET` длиной не менее 32 байт.
+2. Запустите БД и миграции:
 
 ```bash
 make env-up
 make migrate-up
+```
+
+3. В отдельных терминалах запустите backend и frontend:
+
+```bash
+make eventsapp-run
+make frontend-install
+make frontend-dev
+```
+
+Frontend будет доступен на `http://localhost:5173`, backend — на `http://localhost:5050`. Для local HTTP оставьте `AUTH_REFRESH_COOKIE_SECURE=false`.
+
+## Docker
+
+Локальный full-stack deployment:
+
+```bash
 make eventsapp-deploy
 ```
 
-Перед production-запуском задайте `AUTH_SECRET` случайной строкой длиной не менее 32 байт.
-Access JWT по умолчанию живёт `15m`, а серверная refresh-сессия — `720h`. Параметры
-настраиваются через `AUTH_ACCESS_TOKEN_TTL` и `AUTH_REFRESH_TOKEN_TTL`.
+Compose применяет миграции, запускает PostgreSQL/PostGIS, Go backend и Nginx со SPA на `http://localhost:8080`. Backend и PostgreSQL не публикуются наружу.
 
-Refresh token хранится в `HttpOnly` cookie и в открытом виде в PostgreSQL не записывается.
-Для HTTPS обязательно задайте `AUTH_REFRESH_COOKIE_SECURE=true`. Разрешённые frontend-origin
-задаются через `HTTP_ALLOWED_ORIGINS` через запятую. После обновления существующей базы примените
-миграции командой `make migrate-up`.
+Вспомогательные сервисы не входят в стандартный запуск: DB port-forwarder включается командой `make env-port-forward`, Swagger generator — `make swagger-gen`.
 
-Аутентификация доступна через `/api/v1/auth/register`, `/api/v1/auth/login`,
-`/api/v1/auth/refresh`, `/api/v1/auth/me` и `/api/v1/auth/logout`. Защищённые запросы принимают access token в заголовке
-`Authorization: Bearer <token>`.
-
-## Frontend
+Production-вариант добавляет Caddy с автоматическим TLS. Задайте реальный `APP_DOMAIN`, направьте на сервер DNS и выполните:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose -f docker-compose.yaml -f docker-compose.prod.yaml up -d --build edge
 ```
 
-The frontend dev server opens at `http://localhost:5173/`.
+Production override принудительно включает Secure-cookie. Для внешней PostgreSQL задайте `POSTGRES_SSL_MODE=verify-full` и `POSTGRES_SSL_ROOT_CERT`.
+
+## Проверки
+
+```bash
+cd backend && go test -race ./... && go vet ./...
+cd ../frontend && npm ci && npm run lint && npm run test && npm run build
+```
+
+Swagger UI: `http://localhost:5050/swagger/` при прямом backend-запуске. Служебные endpoints: `/health/live`, `/health/ready`, `/metrics`.
+
+Подробная документация находится в `docs/`; актуальный журнал исправлений — `docs/KNOWN_ISSUES.md`.

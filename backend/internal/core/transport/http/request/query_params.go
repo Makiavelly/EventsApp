@@ -47,3 +47,19 @@ func GetFloatQueryParam(r *http.Request, key string) (*float64, error) {
 
 	return &val, nil
 }
+
+func GetPositiveIntQueryParam(r *http.Request, key string) (*int, error) {
+	value, err := GetIntQueryParam(r, key)
+	if err != nil {
+		return nil, err
+	}
+	if value != nil && *value <= 0 {
+		return nil, fmt.Errorf(
+			"param by key='%s' must be positive: %w",
+			key,
+			core_errors.ErrInvalidArgument,
+		)
+	}
+
+	return value, nil
+}

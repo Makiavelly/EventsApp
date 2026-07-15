@@ -8,7 +8,7 @@ export COMPOSE_FILE=${REPO_ROOT}/docker-compose.yaml
 env-up:
 	@docker compose up -d eventsapp-postgres
 	@until docker compose exec -T eventsapp-postgres \
-    	pg_isready -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)" \
+		pg_isready -h 127.0.0.1 -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)" \
     	>/dev/null 2>&1; do \
     	    sleep 1; \
     	done
@@ -16,12 +16,13 @@ env-up:
 	@sudo chmod -R a+rX ${REPO_ROOT}/out/pgdata
 
 env-down:
-	@docker compose down eventsapp-postgres
+	@docker compose stop eventsapp-postgres
+	@docker compose rm -f eventsapp-postgres
 
 env-cleanup:
 	@read -p "Очистить все volume-файлы окружения? ОПАСНОСТЬ УТЕРИ ДАННЫХ. [y/N]: " ans; \
 	if [ "$$ans" = "y" ]; then \
-		docker compose down eventsapp-postgres port-forwarder && \
+		docker compose down && \
 		sudo rm -rf ${REPO_ROOT}/out/pgdata && \
 		echo "Файлы окружения очищены"; \
 	else \
@@ -32,7 +33,8 @@ env-port-forward:
 	@docker compose up -d port-forwarder
 
 env-port-close:
-	@docker compose down port-forwarder
+	@docker compose stop port-forwarder
+	@docker compose rm -f port-forwarder
 
 migrate-create:
 	@if [ -z "$(seq)" ]; then \
@@ -59,7 +61,7 @@ migrate-action:
 	fi; \
 	docker compose run --rm eventsapp-postgres-migrate \
 		-path /migrations \
-		-database postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:5432/${POSTGRES_DB}?sslmode=disable \
+		-database "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE}&sslrootcert=${POSTGRES_SSL_ROOT_CERT}&search_path=public" \
 		"$(action)"
 
 eventsapp-run:
@@ -67,11 +69,10 @@ eventsapp-run:
 	@export PROJECT_ROOT=${BACKEND_ROOT} && \
 	export LOGGER_FOLDER=${REPO_ROOT}/out/logs && \
 	export POSTGRES_HOST=localhost && \
-	go mod tidy && \
 	go run ${BACKEND_ROOT}/cmd/eventsapp/main.go
 
 logs-cleanup:
-	@read -p "Очистить все lgo-файлы? ОПАСНОСТЬ УТЕРИ ЛОГОВ. [y/N]: " ans; \
+	@read -p "Очистить все log-файлы? ОПАСНОСТЬ УТЕРИ ЛОГОВ. [y/N]: " ans; \
 	if [ "$$ans" = "y" ]; then \
 		sudo rm -rf ${REPO_ROOT}/out/logs && \
 		echo "Файлы логов очищены"; \
@@ -80,10 +81,11 @@ logs-cleanup:
 	fi
 
 eventsapp-deploy:
-	@docker compose up -d --build eventsapp
+	@docker compose up -d --build frontend
 
 eventsapp-undeploy:
-	@docker compose down eventsapp
+	@docker compose stop frontend eventsapp
+	@docker compose rm -f frontend eventsapp
 
 swagger-gen:
 	@docker compose run --rm swagger \

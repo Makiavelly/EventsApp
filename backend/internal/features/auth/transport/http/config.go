@@ -26,7 +26,7 @@ func NewCookieConfig() (CookieConfig, error) {
 		return CookieConfig{}, fmt.Errorf("invalid AUTH_REFRESH_COOKIE_NAME: %w", err)
 	}
 
-	secure := false
+	secure := true
 	if value := os.Getenv("AUTH_REFRESH_COOKIE_SECURE"); value != "" {
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {

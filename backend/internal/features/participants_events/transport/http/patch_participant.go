@@ -11,7 +11,12 @@ import (
 )
 
 type PatchParticipantRequest struct {
-	Status string `json:"status" validate:"required" example:"over"`
+	Status string `json:"status" example:"over"`
+}
+
+func (r *PatchParticipantRequest) Validate() error {
+	participant := domain.NewParticipant(1, 1, r.Status)
+	return participant.Validate()
 }
 
 type PatchParticipantResponse ParticipantDTOResponse
@@ -27,7 +32,9 @@ type PatchParticipantResponse ParticipantDTOResponse
 // @Param 		request body PatchParticipantRequest true "Patch participant тело запроса"
 // @Success 	200 {object} PatchParticipantResponse "Успешно обновленный участник события"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	401 {object} core_http_response.ErrorResponse "Unauthorized"
 // @Failure 	404 {object} core_http_response.ErrorResponse "Participant not found"
+// @Failure 	413 {object} core_http_response.ErrorResponse "Payload too large"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/participants [patch]
 func (h *ParticipantsHTTPHandler) PatchParticipant(rw http.ResponseWriter, r *http.Request) {

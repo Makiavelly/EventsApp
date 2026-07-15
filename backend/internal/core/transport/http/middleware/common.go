@@ -1,6 +1,7 @@
 package core_http_middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -24,7 +25,12 @@ func CORS() Middleware {
 			origin := r.Header.Get("Origin")
 			if origin != "" {
 				if _, ok := allowedOrigins[origin]; !ok {
-					http.Error(w, "origin is not allowed", http.StatusForbidden)
+					w.Header().Set("Content-Type", "application/json; charset=utf-8")
+					w.WriteHeader(http.StatusForbidden)
+					_ = json.NewEncoder(w).Encode(core_http_response.ErrorResponse{
+						Error:   http.StatusText(http.StatusForbidden),
+						Message: "origin is not allowed",
+					})
 
 					return
 				}
@@ -57,6 +63,7 @@ func corsAllowedOrigins() map[string]struct{} {
 			"http://localhost:5173",
 			"http://172.20.247.149:5050",
 			"http://172.20.247.149:5173",
+			"http://172.20.247.149:8080",
 		}, ",")
 	}
 

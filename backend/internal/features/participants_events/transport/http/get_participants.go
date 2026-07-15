@@ -9,7 +9,7 @@ import (
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
 
-type GetParticipantsResponse []EventParticipantsDTOResponse
+type GetParticipantsResponse []EventParticipantDTOResponse
 
 // GetParticipantsEvents 	godoc
 // @Summary 	Получить участников событий
@@ -19,9 +19,8 @@ type GetParticipantsResponse []EventParticipantsDTOResponse
 // @Param 		event_id query int false "ID события"
 // @Param 		limit query int false "Лимит участников"
 // @Param 		offset query int false "Смещение участников"
-// @Success 	200 {array} GetParticipantsResponse "Успешно полученный список участников событий"
+// @Success 	200 {array} EventParticipantDTOResponse "Успешно полученный список участников событий"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
-// @Failure 	404 {object} core_http_response.ErrorResponse "Participants not found"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/participants [get]
 func (h *ParticipantsHTTPHandler) GetParticipantsEvents(rw http.ResponseWriter, r *http.Request) {
@@ -48,7 +47,7 @@ func (h *ParticipantsHTTPHandler) GetParticipantsEvents(rw http.ResponseWriter, 
 		return
 	}
 
-	response := GetParticipantsResponse(eventParticipantsDTOsFromDomains(participantsDomains))
+	response := GetParticipantsResponse(eventParticipantDTOsFromDomains(participantsDomains))
 
 	responseHandler.JSONResponse(response, http.StatusOK)
 }
@@ -60,7 +59,7 @@ func getEventIDLimitOffsetParams(r *http.Request) (*int, *int, *int, error) {
 		offsetQueryParamKey  = "offset"
 	)
 
-	eventID, err := core_http_request.GetIntQueryParam(r, eventIDQueryParamKey)
+	eventID, err := core_http_request.GetPositiveIntQueryParam(r, eventIDQueryParamKey)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("get 'event_id' query param: %w", err)
 	}

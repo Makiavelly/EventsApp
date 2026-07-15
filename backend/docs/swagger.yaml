@@ -46,17 +46,10 @@ definitions:
     properties:
       email:
         example: alex@mail.ru
-        maxLength: 100
-        minLength: 9
         type: string
       password:
         example: alexpswd
-        maxLength: 72
-        minLength: 6
         type: string
-    required:
-    - email
-    - password
     type: object
   internal_features_auth_transport_http.LoginResponse:
     properties:
@@ -76,23 +69,13 @@ definitions:
     properties:
       email:
         example: alex@mail.ru
-        maxLength: 100
-        minLength: 9
         type: string
       name:
         example: Alex
-        maxLength: 100
-        minLength: 1
         type: string
       password:
         example: alexpswd
-        maxLength: 72
-        minLength: 6
         type: string
-    required:
-    - email
-    - name
-    - password
     type: object
   internal_features_auth_transport_http.RegisterResponse:
     properties:
@@ -107,19 +90,13 @@ definitions:
         example: "2026-08-10T18:00:00Z"
         type: string
       description:
-        example: Go to footbal
-        maxLength: 300
-        minLength: 1
+        example: Go to football
         type: string
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       title:
         example: Sport
-        maxLength: 50
-        minLength: 1
         type: string
-    required:
-    - title
     type: object
   internal_features_events_transport_http.CreateEventResponse:
     properties:
@@ -127,7 +104,7 @@ definitions:
         example: 1
         type: integer
       date_meeting:
-        example: 2026-07-01T13-52-14.752729
+        example: "2026-08-01T13:52:14Z"
         type: string
       description:
         example: Go to football
@@ -138,7 +115,7 @@ definitions:
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       title:
-        example: Sprot
+        example: Sport meetup
         type: string
     type: object
   internal_features_events_transport_http.EventDTOResponse:
@@ -147,7 +124,7 @@ definitions:
         example: 1
         type: integer
       date_meeting:
-        example: 2026-07-01T13-52-14.752729
+        example: "2026-08-01T13:52:14Z"
         type: string
       description:
         example: Go to football
@@ -158,7 +135,7 @@ definitions:
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       title:
-        example: Sprot
+        example: Sport meetup
         type: string
     type: object
   internal_features_events_transport_http.GetEventResponse:
@@ -167,7 +144,7 @@ definitions:
         example: 1
         type: integer
       date_meeting:
-        example: 2026-07-01T13-52-14.752729
+        example: "2026-08-01T13:52:14Z"
         type: string
       description:
         example: Go to football
@@ -178,7 +155,7 @@ definitions:
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       title:
-        example: Sprot
+        example: Sport meetup
         type: string
     type: object
   internal_features_events_transport_http.PatchEventRequest:
@@ -202,7 +179,7 @@ definitions:
         example: 1
         type: integer
       date_meeting:
-        example: 2026-07-01T13-52-14.752729
+        example: "2026-08-01T13:52:14Z"
         type: string
       description:
         example: Go to football
@@ -213,7 +190,7 @@ definitions:
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       title:
-        example: Sprot
+        example: Sport meetup
         type: string
     type: object
   internal_features_participants_events_transport_http.CreateParticipantRequest:
@@ -221,8 +198,6 @@ definitions:
       event_id:
         example: 1
         type: integer
-    required:
-    - event_id
     type: object
   internal_features_participants_events_transport_http.CreateParticipantResponse:
     properties:
@@ -236,23 +211,26 @@ definitions:
         example: planned
         type: string
     type: object
-  internal_features_participants_events_transport_http.EventParticipantsDTOResponse:
+  internal_features_participants_events_transport_http.EventParticipantDTOResponse:
     properties:
       event_id:
         example: 1
         type: integer
-      users:
-        items:
-          $ref: '#/definitions/internal_features_participants_events_transport_http.UserDTOResponse'
-        type: array
+      name:
+        example: Alex
+        type: string
+      participant_id:
+        example: 2
+        type: integer
+      status:
+        example: planned
+        type: string
     type: object
   internal_features_participants_events_transport_http.PatchParticipantRequest:
     properties:
       status:
         example: over
         type: string
-    required:
-    - status
     type: object
   internal_features_participants_events_transport_http.PatchParticipantResponse:
     properties:
@@ -266,23 +244,8 @@ definitions:
         example: planned
         type: string
     type: object
-  internal_features_participants_events_transport_http.UserDTOResponse:
-    properties:
-      email:
-        example: alex@mail.ru
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: Alex
-        type: string
-    type: object
   internal_features_users_transport_http.GetUserResponse:
     properties:
-      email:
-        example: alex@mail.ru
-        type: string
       id:
         example: 1
         type: integer
@@ -313,9 +276,6 @@ definitions:
     type: object
   internal_features_users_transport_http.UserDTOResponse:
     properties:
-      email:
-        example: alex@mail.ru
-        type: string
       id:
         example: 1
         type: integer
@@ -323,7 +283,6 @@ definitions:
         example: Alex
         type: string
     type: object
-host: 172.20.247.149:5050
 info:
   contact: {}
   description: Events Application REST-API scheme
@@ -355,6 +314,14 @@ paths:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "429":
+          description: Too many requests
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -419,6 +386,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "429":
+          description: Too many requests
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
           description: Internal server error
           schema:
@@ -451,6 +422,14 @@ paths:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "409":
           description: Email already registered
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "429":
+          description: Too many requests
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -507,16 +486,10 @@ paths:
           description: Успешно полученный список событий
           schema:
             items:
-              items:
-                $ref: '#/definitions/internal_features_events_transport_http.EventDTOResponse'
-              type: array
+              $ref: '#/definitions/internal_features_events_transport_http.EventDTOResponse'
             type: array
         "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "404":
-          description: Event not found
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -548,8 +521,16 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -575,6 +556,14 @@ paths:
           description: Событие успешно удалено
         "400":
           description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
@@ -652,8 +641,20 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -679,6 +680,10 @@ paths:
           description: Участник события успешно удален
         "400":
           description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
@@ -717,16 +722,10 @@ paths:
           description: Успешно полученный список участников событий
           schema:
             items:
-              items:
-                $ref: '#/definitions/internal_features_participants_events_transport_http.EventParticipantsDTOResponse'
-              type: array
+              $ref: '#/definitions/internal_features_participants_events_transport_http.EventParticipantDTOResponse'
             type: array
         "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "404":
-          description: Participants not found
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -763,8 +762,16 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: Participant not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -798,12 +805,20 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: User not found
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "409":
           description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -834,16 +849,10 @@ paths:
           description: Успешно полученный список пользователей
           schema:
             items:
-              items:
-                $ref: '#/definitions/internal_features_users_transport_http.UserDTOResponse'
-              type: array
+              $ref: '#/definitions/internal_features_users_transport_http.UserDTOResponse'
             type: array
         "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "404":
-          description: User not found
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
@@ -869,6 +878,14 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: User not found
           schema:
@@ -877,6 +894,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Удалить пользователя
       tags:
       - users
@@ -941,14 +960,28 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "413":
+          description: Payload too large
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Обновить пользователя
       tags:
       - users

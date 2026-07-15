@@ -1,29 +1,45 @@
 import type { ReactNode } from "react";
-import { CalendarDays, MapPin, UserPlus, UsersRound } from "lucide-react";
-import { Link, useLocation, useParams } from "react-router-dom";
-import { useEvent, useJoinEvent, useParticipants } from "../api/queries";
-import type { ParticipantUser } from "../api/types";
+import { CalendarDays, MapPin, Pencil, Trash2, UserPlus, UsersRound } from "lucide-react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  useDeleteEvent,
+  useEvent,
+  useJoinEvent,
+  useLeaveEvent,
+  useParticipants,
+  useUpdateParticipation,
+} from "../api/queries";
+import type { EventParticipant, ParticipantStatus } from "../api/types";
+import { useAuth } from "../auth/useAuth";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-	import { useAuth } from "../auth/useAuth";
 import { StatusView } from "../components/StatusView";
 import { Table } from "../components/Table";
 import { errorMessage, formatDateTime, formatLocation } from "../utils/format";
 
+const participantStatusLabels: Record<ParticipantStatus, string> = {
+  planned: "Планирует",
+  underway: "Участвует",
+  over: "Завершил",
+};
+
 export function EventDetailsPage() {
   const { id } = useParams();
   const eventId = Number(id);
-	const { user } = useAuth();
-	const location = useLocation();
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const eventQuery = useEvent(eventId);
   const participantsQuery = useParticipants(eventId);
   const joinEvent = useJoinEvent();
+  const updateParticipation = useUpdateParticipation(eventId);
+  const leaveEvent = useLeaveEvent(eventId);
+  const deleteEvent = useDeleteEvent();
+  const participants = participantsQuery.data ?? [];
+  const currentParticipation = participants.find((participant) => participant.participant_id === user?.id);
 
-  const participants =
-    participantsQuery.data?.find((item) => item.event_id === eventId)?.users ?? participantsQuery.data?.[0]?.users ?? [];
-
-  if (!Number.isFinite(eventId)) {
+  if (!Number.isFinite(eventId) || eventId <= 0) {
     return <StatusView title="Некорректный ID события" description="Проверьте адрес страницы." tone="error" />;
   }
 
@@ -42,12 +58,40 @@ export function EventDetailsPage() {
   }
 
   const event = eventQuery.data;
+  const isCreator = event.creator_user_id === user?.id;
+  const participationError = joinEvent.error ?? updateParticipation.error ?? leaveEvent.error;
+
+  function handleDelete() {
+    if (!window.confirm("Удалить событие вместе со списком участников?")) return;
+
+    deleteEvent.mutate(eventId, {
+      onSuccess: () => navigate("/", { replace: true }),
+    });
+  }
 
   return (
     <div className="grid gap-6">
-      <Link to="/" className="focus-ring w-fit rounded-lg px-1 text-sm font-semibold text-meadow">
-        Вернуться к событиям
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link to="/" className="focus-ring w-fit rounded-lg px-1 text-sm font-semibold text-meadow">
+          Вернуться к событиям
+        </Link>
+        {isCreator ? (
+          <div className="flex gap-2">
+            <Link
+              to={`/events/${event.id}/edit`}
+              className="focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ink/12 bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/25"
+            >
+              <Pencil size={16} />
+              Редактировать
+            </Link>
+            <Button variant="danger" icon={<Trash2 size={16} />} disabled={deleteEvent.isPending} onClick={handleDelete}>
+              {deleteEvent.isPending ? "Удаляем..." : "Удалить"}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {deleteEvent.isError ? <p className="text-sm text-clay">{errorMessage(deleteEvent.error)}</p> : null}
 
       <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-5 sm:p-7">
@@ -67,21 +111,57 @@ export function EventDetailsPage() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-lg font-semibold text-ink">Присоединиться</h2>
+          <h2 className="text-lg font-semibold text-ink">Участие</h2>
           <p className="mt-2 text-sm leading-6 text-ink/60">
-			{user ? "Ваш аккаунт будет добавлен в список участников." : "Войдите в аккаунт, чтобы стать участником."}
+            {!user
+              ? "Войдите в аккаунт, чтобы стать участником."
+              : currentParticipation
+                ? "Вы уже в списке участников и можете изменить свой статус."
+                : "Ваш аккаунт будет добавлен в список участников."}
           </p>
-		  <div className="mt-5 grid gap-3">
-			{user ? (
-			  <Button icon={<UserPlus size={17} />} disabled={joinEvent.isPending} onClick={() => joinEvent.mutate({ event_id: eventId })}>
-				{joinEvent.isPending ? "Добавляем..." : "Стать участником"}
-			  </Button>
-			) : (
-			  <Link to="/auth" state={{ from: location.pathname }} className="focus-ring inline-flex min-h-10 items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white">Войти</Link>
-			)}
-            {joinEvent.isError ? <p className="text-sm text-clay">{errorMessage(joinEvent.error)}</p> : null}
-            {joinEvent.isSuccess ? <p className="text-sm font-medium text-meadow">Участник добавлен.</p> : null}
-		  </div>
+          <div className="mt-5 grid gap-3">
+            {!user ? (
+              <Link
+                to="/auth"
+                state={{ from: location.pathname }}
+                className="focus-ring inline-flex min-h-10 items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white"
+              >
+                Войти
+              </Link>
+            ) : participantsQuery.isLoading ? (
+              <Button disabled>Проверяем участие...</Button>
+            ) : participantsQuery.isError ? (
+              <p className="text-sm text-clay">Нельзя изменить участие, пока список недоступен.</p>
+            ) : currentParticipation ? (
+              <>
+                <label className="grid gap-2 text-sm font-medium text-ink">
+                  Статус
+                  <select
+                    className="focus-ring min-h-11 rounded-lg border border-ink/12 bg-white px-3"
+                    value={currentParticipation.status}
+                    disabled={updateParticipation.isPending}
+                    onChange={(changeEvent) => updateParticipation.mutate(changeEvent.target.value as ParticipantStatus)}
+                  >
+                    {Object.entries(participantStatusLabels).map(([status, label]) => (
+                      <option key={status} value={status}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+                <Button variant="secondary" disabled={leaveEvent.isPending} onClick={() => leaveEvent.mutate()}>
+                  {leaveEvent.isPending ? "Выходим..." : "Покинуть событие"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                icon={<UserPlus size={17} />}
+                disabled={joinEvent.isPending}
+                onClick={() => joinEvent.mutate({ event_id: eventId })}
+              >
+                {joinEvent.isPending ? "Добавляем..." : "Стать участником"}
+              </Button>
+            )}
+            {participationError ? <p className="text-sm text-clay">{errorMessage(participationError)}</p> : null}
+          </div>
         </Card>
       </section>
 
@@ -96,14 +176,14 @@ export function EventDetailsPage() {
         {participantsQuery.isError ? (
           <StatusView title="Не удалось загрузить участников" description={errorMessage(participantsQuery.error)} tone="error" />
         ) : (
-          <Table<ParticipantUser>
+          <Table<EventParticipant>
             data={participants}
-            getRowKey={(user) => user.id}
+            getRowKey={(participant) => participant.participant_id}
             emptyText="У этого события пока нет участников"
             columns={[
-              { key: "id", title: "ID", render: (user) => user.id },
-              { key: "name", title: "Имя", render: (user) => user.name },
-              { key: "email", title: "Email", render: (user) => user.email },
+              { key: "id", title: "ID", render: (participant) => participant.participant_id },
+              { key: "name", title: "Имя", render: (participant) => participant.name },
+              { key: "status", title: "Статус", render: (participant) => participantStatusLabels[participant.status] },
             ]}
           />
         )}

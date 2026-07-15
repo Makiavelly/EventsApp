@@ -2,55 +2,54 @@ package core_http_request
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
-	"regexp"
 
 	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
-	"github.com/go-playground/validator/v10"
 )
 
-var (
-	requestValidator = validator.New()
-	emailRegex       = regexp.MustCompile(
-		`(?i)^[^@\s]+@(mail\.ru|gmail\.com)$`,
-	)
-)
-
-func init() {
-	err := requestValidator.RegisterValidation(
-		"allowed_email",
-		func(fl validator.FieldLevel) bool {
-			return emailRegex.MatchString(fl.Field().String())
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-}
+const MaxRequestBodyBytes = 1 << 20
 
 type validatable interface {
 	Validate() error
 }
 
 func DecodeAndValidateRequest(r *http.Request, dest any) error {
-	if err := json.NewDecoder(r.Body).Decode(dest); err != nil {
+	r.Body = http.MaxBytesReader(nil, r.Body, MaxRequestBodyBytes)
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(dest); err != nil {
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			return fmt.Errorf(
+				"request body exceeds %d bytes: %w",
+				maxBytesError.Limit,
+				core_errors.ErrPayloadTooLarge,
+			)
+		}
+
 		return fmt.Errorf("decode json: %v: %w", err, core_errors.ErrInvalidArgument)
 	}
 
-	var (
-		err error
-	)
-
-	v, ok := dest.(validatable)
-	if ok {
-		err = v.Validate()
-	} else {
-		err = requestValidator.Struct(dest)
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return fmt.Errorf(
+			"request body must contain exactly one JSON value: %w",
+			core_errors.ErrInvalidArgument,
+		)
 	}
 
-	if err != nil {
-		return fmt.Errorf("request validation: %v: %w", err, core_errors.ErrInvalidArgument)
+	if value, ok := dest.(validatable); ok {
+		if err := value.Validate(); err != nil {
+			return fmt.Errorf(
+				"request validation: %v: %w",
+				err,
+				core_errors.ErrInvalidArgument,
+			)
+		}
 	}
 
 	return nil

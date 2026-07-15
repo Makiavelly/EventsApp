@@ -36,7 +36,7 @@ type ParticipantsService interface {
 		eventID *int,
 		limit *int,
 		offset *int,
-	) ([]domain.EventParticipants, error)
+	) ([]domain.EventParticipant, error)
 
 	PatchParticipant(
 		ctx context.Context,

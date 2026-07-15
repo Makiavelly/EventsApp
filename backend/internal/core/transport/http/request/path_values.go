@@ -24,6 +24,13 @@ func GetIntPathValue(r *http.Request, key string) (int, error) {
 			core_errors.ErrInvalidArgument,
 		)
 	}
+	if val <= 0 {
+		return 0, fmt.Errorf(
+			"path value by key='%s' must be positive: %w",
+			key,
+			core_errors.ErrInvalidArgument,
+		)
+	}
 
 	return val, nil
 }

@@ -10,10 +10,10 @@ import (
 type EventDTOResponse struct {
 	ID            int                       `json:"id"              example:"1"`
 	CreatorUserID int                       `json:"creator_user_id" example:"1"`
-	Title         string                    `json:"title"           example:"Sprot"`
+	Title         string                    `json:"title"           example:"Sport meetup"`
 	Description   *string                   `json:"description"     example:"Go to football"`
 	Location      *core_http_types.Location `json:"location"`
-	DateMeeting   *time.Time                `json:"date_meeting"    example:"2026-07-01T13-52-14.752729"`
+	DateMeeting   *time.Time                `json:"date_meeting"    example:"2026-08-01T13:52:14Z"`
 }
 
 func eventDTOFromDomain(event domain.Event) EventDTOResponse {

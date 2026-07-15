@@ -57,12 +57,9 @@ func (s *EventsService) GetEvents(
 		}
 	}
 
-	if limit != nil && *limit < 0 {
-		return nil, fmt.Errorf("limit must be non-negative: %w", core_errors.ErrInvalidArgument)
-	}
-
-	if offset != nil && *offset < 0 {
-		return nil, fmt.Errorf("offset must be non-negative: %w", core_errors.ErrInvalidArgument)
+	resolvedLimit, resolvedOffset, err := domain.ResolvePagination(limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("validate pagination: %w", err)
 	}
 
 	events, err := s.eventsRepository.GetEvents(
@@ -71,8 +68,8 @@ func (s *EventsService) GetEvents(
 		longitude,
 		radius,
 		bounds,
-		limit,
-		offset,
+		&resolvedLimit,
+		&resolvedOffset,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get events from repository: %w", err)

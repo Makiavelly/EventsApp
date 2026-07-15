@@ -15,3 +15,8 @@ type Authentication struct {
 	RefreshToken     string
 	RefreshExpiresAt time.Time
 }
+
+type AuthenticatedUser struct {
+	UserID    int
+	SessionID string
+}

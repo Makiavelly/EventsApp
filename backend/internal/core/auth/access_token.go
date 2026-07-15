@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -18,6 +19,11 @@ type AccessTokenManager struct {
 	now      func() time.Time
 }
 
+type accessTokenClaims struct {
+	SessionID string `json:"sid"`
+	jwt.RegisteredClaims
+}
+
 func NewAccessTokenManager(config Config) *AccessTokenManager {
 	return &AccessTokenManager{
 		secret:   []byte(config.Secret),
@@ -28,16 +34,26 @@ func NewAccessTokenManager(config Config) *AccessTokenManager {
 	}
 }
 
-func (m *AccessTokenManager) Issue(userID int) (string, error) {
+func (m *AccessTokenManager) Issue(userID int, sessionID string) (string, error) {
+	if userID <= 0 {
+		return "", fmt.Errorf("user ID must be positive: %w", core_errors.ErrInvalidArgument)
+	}
+	if _, err := uuid.Parse(sessionID); err != nil {
+		return "", fmt.Errorf("parse access token session ID: %w", err)
+	}
+
 	now := m.now().UTC()
-	claims := jwt.RegisteredClaims{
-		Issuer:    m.issuer,
-		Subject:   strconv.Itoa(userID),
-		Audience:  jwt.ClaimStrings{m.audience},
-		ExpiresAt: jwt.NewNumericDate(now.Add(m.ttl)),
-		NotBefore: jwt.NewNumericDate(now),
-		IssuedAt:  jwt.NewNumericDate(now),
-		ID:        uuid.NewString(),
+	claims := accessTokenClaims{
+		SessionID: sessionID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    m.issuer,
+			Subject:   strconv.Itoa(userID),
+			Audience:  jwt.ClaimStrings{m.audience},
+			ExpiresAt: jwt.NewNumericDate(now.Add(m.ttl)),
+			NotBefore: jwt.NewNumericDate(now),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ID:        uuid.NewString(),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -49,8 +65,8 @@ func (m *AccessTokenManager) Issue(userID int) (string, error) {
 	return signedToken, nil
 }
 
-func (m *AccessTokenManager) Verify(tokenValue string) (int, error) {
-	claims := &jwt.RegisteredClaims{}
+func (m *AccessTokenManager) Verify(tokenValue string) (domain.AuthenticatedUser, error) {
+	claims := &accessTokenClaims{}
 	token, err := jwt.ParseWithClaims(
 		tokenValue,
 		claims,
@@ -70,13 +86,28 @@ func (m *AccessTokenManager) Verify(tokenValue string) (int, error) {
 		jwt.WithTimeFunc(m.now),
 	)
 	if err != nil || !token.Valid {
-		return 0, fmt.Errorf("invalid access token: %w", core_errors.ErrUnauthorized)
+		return domain.AuthenticatedUser{}, fmt.Errorf(
+			"invalid access token: %w",
+			core_errors.ErrUnauthorized,
+		)
 	}
 
 	userID, err := strconv.Atoi(claims.Subject)
 	if err != nil || userID <= 0 {
-		return 0, fmt.Errorf("invalid access token subject: %w", core_errors.ErrUnauthorized)
+		return domain.AuthenticatedUser{}, fmt.Errorf(
+			"invalid access token subject: %w",
+			core_errors.ErrUnauthorized,
+		)
+	}
+	if _, err := uuid.Parse(claims.SessionID); err != nil {
+		return domain.AuthenticatedUser{}, fmt.Errorf(
+			"invalid access token session: %w",
+			core_errors.ErrUnauthorized,
+		)
 	}
 
-	return userID, nil
+	return domain.AuthenticatedUser{
+		UserID:    userID,
+		SessionID: claims.SessionID,
+	}, nil
 }

@@ -13,6 +13,7 @@ import (
 func (r *UsersRepository) CreateUser(
 	ctx context.Context,
 	user domain.User,
+	passwordHash string,
 ) (domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
@@ -20,17 +21,16 @@ func (r *UsersRepository) CreateUser(
 	query := `
 	INSERT INTO eventsapp.users (name, email, password)
 	VALUES ($1, $2, $3)
-	RETURNING id, name, email, password;
+	RETURNING id, name, email;
 	`
 
-	row := r.pool.QueryRow(ctx, query, user.Name, user.Email, user.Password)
+	row := r.pool.QueryRow(ctx, query, user.Name, user.Email, passwordHash)
 
 	var userModel UserModel
 	err := row.Scan(
 		&userModel.ID,
 		&userModel.Name,
 		&userModel.Email,
-		&userModel.Password,
 	)
 	if err != nil {
 		if errors.Is(err, core_postgres_pool.ErrViolatesUnique) {
@@ -43,7 +43,6 @@ func (r *UsersRepository) CreateUser(
 		userModel.ID,
 		userModel.Name,
 		userModel.Email,
-		userModel.Password,
 	)
 
 	return userDomain, err

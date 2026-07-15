@@ -24,9 +24,8 @@ func (r *PatchUserRequest) Validate() error {
 			return fmt.Errorf("'Name' can't be NULL")
 		}
 
-		nameLen := len([]rune(*r.Name.Value))
-		if nameLen < 1 || nameLen > 100 {
-			return fmt.Errorf("'Name' must be between 1 and 100 symbols")
+		if err := domain.ValidateUserName(*r.Name.Value); err != nil {
+			return err
 		}
 	}
 
@@ -35,16 +34,15 @@ func (r *PatchUserRequest) Validate() error {
 			return fmt.Errorf("'Password' can't be NULL")
 		}
 
-		passwordLen := len([]rune(*r.Password.Value))
-		if passwordLen < 6 || passwordLen > 72 {
-			return fmt.Errorf("'Password' must be between 6 and 72 symbols")
+		if err := domain.ValidateUserPassword(*r.Password.Value); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-type PatchUserResponse UserDTOResponse
+type PatchUserResponse PrivateUserDTOResponse
 
 // PatchUser 	godoc
 // @Summary 	Обновить пользователя
@@ -53,13 +51,17 @@ type PatchUserResponse UserDTOResponse
 // @Description 1. **Поле не передано**: `name` игнорируется, значение в БД не меняется
 // @Description 2. **Явно передано значение**: `"name":"Alex"` - устанавливает новое имя в БД
 // @Tags 		users
+// @Security 	BearerAuth
 // @Accept 		json
 // @Produce 	json
 // @Param 		id path int true "ID пользователя"
 // @Param 		request body PatchUserRequest true "Patch user тело запроса"
 // @Success 	200 {object} PatchUserResponse "Успешно обновленный пользователь"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	401 {object} core_http_response.ErrorResponse "Unauthorized"
+// @Failure 	403 {object} core_http_response.ErrorResponse "Forbidden"
 // @Failure 	404 {object} core_http_response.ErrorResponse "User not found"
+// @Failure 	413 {object} core_http_response.ErrorResponse "Payload too large"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/users/{id} [patch]
 func (h *UsersHTTPHandler) PatchUser(rw http.ResponseWriter, r *http.Request) {
@@ -99,7 +101,7 @@ func (h *UsersHTTPHandler) PatchUser(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := PatchUserResponse(userDTOFromDomain(userDomain))
+	response := PatchUserResponse(privateUserDTOFromDomain(userDomain))
 
 	responseHandler.JSONResponse(response, http.StatusOK)
 }

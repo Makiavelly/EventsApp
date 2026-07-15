@@ -28,3 +28,10 @@ type Row interface {
 type CommandTag interface {
 	RowsAffected() int64
 }
+
+type TransactionManager interface {
+	WithTransaction(
+		ctx context.Context,
+		operation func(context.Context) error,
+	) error
+}

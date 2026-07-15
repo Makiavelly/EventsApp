@@ -13,10 +13,22 @@ import (
 )
 
 type CreateEventRequest struct {
-	Title       string                    `json:"title" validate:"required,min=1,max=50"         example:"Sport"`
-	Description *string                   `json:"description" validate:"omitempty,min=1,max=300" example:"Go to footbal"`
-	Location    *core_http_types.Location `json:"location" validate:"omitempty"`
-	DateMeeting *time.Time                `json:"date_meeting" validate:"omitempty,gt"           example:"2026-07-01T13-52-14.752729"`
+	Title       string                    `json:"title"        example:"Sport"`
+	Description *string                   `json:"description"  example:"Go to football"`
+	Location    *core_http_types.Location `json:"location"`
+	DateMeeting *time.Time                `json:"date_meeting" example:"2026-08-10T18:00:00Z"`
+}
+
+func (r *CreateEventRequest) Validate() error {
+	event := domain.NewEventUninitialized(
+		1,
+		r.Title,
+		r.Description,
+		locationDomainFromDTO(r.Location),
+		r.DateMeeting,
+	)
+
+	return event.Validate()
 }
 
 type CreateEventResponse EventDTOResponse
@@ -31,7 +43,9 @@ type CreateEventResponse EventDTOResponse
 // @Param 		request body CreateEventRequest true "Create event тело запроса"
 // @Success 	201 {object} CreateEventResponse "Успешно созданное событие"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	401 {object} core_http_response.ErrorResponse "Unauthorized"
 // @Failure 	404 {object} core_http_response.ErrorResponse "User not found"
+// @Failure 	413 {object} core_http_response.ErrorResponse "Payload too large"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/events [post]
 func (h *EventsHTTPHandler) CreateEvent(rw http.ResponseWriter, r *http.Request) {

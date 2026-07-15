@@ -12,9 +12,11 @@ type Participant struct {
 	Status        string
 }
 
-type EventParticipants struct {
-	EventID int
-	Users   []User
+type EventParticipant struct {
+	EventID       int
+	ParticipantID int
+	Name          string
+	Status        string
 }
 
 func NewParticipant(

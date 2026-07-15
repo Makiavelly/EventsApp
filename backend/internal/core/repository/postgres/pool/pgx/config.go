@@ -8,12 +8,14 @@ import (
 )
 
 type Config struct {
-	Host     string        `envconfig:"HOST" required:"true"`
-	Port     string        `envconfig:"PORT" default:"5432"`
-	User     string        `envconfig:"USER" required:"true"`
-	Password string        `envconfig:"PASSWORD" required:"true"`
-	Database string        `envconfig:"DB" required:"true"`
-	Timeout  time.Duration `envconfig:"TIMEOUT" required:"true"`
+	Host        string        `envconfig:"HOST" required:"true"`
+	Port        string        `envconfig:"PORT" default:"5432"`
+	User        string        `envconfig:"USER" required:"true"`
+	Password    string        `envconfig:"PASSWORD" required:"true"`
+	Database    string        `envconfig:"DB" required:"true"`
+	Timeout     time.Duration `envconfig:"TIMEOUT" required:"true"`
+	SSLMode     string        `envconfig:"SSL_MODE" default:"disable"`
+	SSLRootCert string        `envconfig:"SSL_ROOT_CERT"`
 }
 
 func NewConfig() (Config, error) {

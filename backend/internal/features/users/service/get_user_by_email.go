@@ -7,10 +7,14 @@ import (
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 )
 
-func (s *UsersService) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
-	user, err := s.usersRepository.GetUserByEmail(ctx, email)
+func (s *UsersService) GetUserByEmail(
+	ctx context.Context,
+	email string,
+) (domain.UserAccount, error) {
+	account, err := s.usersRepository.GetUserByEmail(ctx, domain.NormalizeEmail(email))
 	if err != nil {
-		return domain.User{}, fmt.Errorf("get user by email: %w", err)
+		return domain.UserAccount{}, fmt.Errorf("get user by email: %w", err)
 	}
-	return user, nil
+
+	return account, nil
 }

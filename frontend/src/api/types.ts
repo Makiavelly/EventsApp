@@ -24,6 +24,13 @@ export type CreateEventPayload = {
   date_meeting?: string;
 };
 
+export type PatchEventPayload = {
+  title?: string;
+  description?: string | null;
+  location?: Location | null;
+  date_meeting?: string | null;
+};
+
 export type EventBounds = {
   west: number;
   south: number;
@@ -46,6 +53,8 @@ export type User = {
   email: string;
 };
 
+export type PublicUser = Pick<User, "id" | "name">;
+
 export type CreateUserPayload = {
   name: string;
   email: string;
@@ -62,13 +71,20 @@ export type AuthResponse = {
   user: User;
 };
 
-export type ParticipantUser = User;
+export type ParticipantStatus = "planned" | "underway" | "over";
 
-export type EventParticipants = {
+export type EventParticipant = {
   event_id: number;
-  users: ParticipantUser[];
+  participant_id: number;
+  name: string;
+  status: ParticipantStatus;
 };
 
 export type CreateParticipantPayload = {
   event_id: number;
+};
+
+export type PatchUserPayload = {
+  name?: string;
+  password?: string;
 };

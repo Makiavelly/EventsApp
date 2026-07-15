@@ -14,17 +14,18 @@ func TestAccessTokenIssueAndVerify(t *testing.T) {
 	manager := NewAccessTokenManager(testConfig())
 	userID := 42
 
-	token, err := manager.Issue(userID)
+	sessionID := "d20cbd4b-4c66-471f-a858-cba5d417a15f"
+	token, err := manager.Issue(userID, sessionID)
 	if err != nil {
 		t.Fatalf("Issue() error = %v", err)
 	}
 
-	gotUserID, err := manager.Verify(token)
+	identity, err := manager.Verify(token)
 	if err != nil {
 		t.Fatalf("Verify() error = %v", err)
 	}
-	if gotUserID != userID {
-		t.Fatalf("Verify() userID = %d, want %d", gotUserID, userID)
+	if identity.UserID != userID || identity.SessionID != sessionID {
+		t.Fatalf("Verify() identity = %+v", identity)
 	}
 }
 
@@ -35,7 +36,7 @@ func TestAccessTokenRejectsExpiredToken(t *testing.T) {
 	issuedAt := time.Date(2026, time.July, 15, 12, 0, 0, 0, time.UTC)
 	manager.now = func() time.Time { return issuedAt }
 
-	token, err := manager.Issue(42)
+	token, err := manager.Issue(42, "d20cbd4b-4c66-471f-a858-cba5d417a15f")
 	if err != nil {
 		t.Fatalf("Issue() error = %v", err)
 	}
@@ -51,7 +52,7 @@ func TestAccessTokenRejectsAnotherSecret(t *testing.T) {
 	t.Parallel()
 
 	manager := NewAccessTokenManager(testConfig())
-	token, err := manager.Issue(42)
+	token, err := manager.Issue(42, "d20cbd4b-4c66-471f-a858-cba5d417a15f")
 	if err != nil {
 		t.Fatalf("Issue() error = %v", err)
 	}
