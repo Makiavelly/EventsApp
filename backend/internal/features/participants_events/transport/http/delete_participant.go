@@ -6,6 +6,7 @@ import (
 
 	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
@@ -15,7 +16,7 @@ import (
 // @Description Удалить пользователя из участников события
 // @Tags 		participants_events
 // @Param 		event_id query int true "ID события"
-// @Param 		participant_id query int true "ID участника"
+// @Security 	BearerAuth
 // @Success 	204 "Участник события успешно удален"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
 // @Failure 	404 {object} core_http_response.ErrorResponse "Participant not found"
@@ -26,9 +27,15 @@ func (h *ParticipantsHTTPHandler) DeleteParticipant(rw http.ResponseWriter, r *h
 	log := core_logger.FromContext(ctx)
 	responseHandler := core_http_response.NewHTTPResponseHandler(log, rw)
 
-	eventID, participantID, err := getEventIDParticipantIDParams(r)
+	eventID, err := getEventIDParam(r)
 	if err != nil {
-		responseHandler.ErrorResponse(err, "failed to get 'event_id'/'participant_id' query param")
+		responseHandler.ErrorResponse(err, "failed to get 'event_id' query param")
+
+		return
+	}
+	participantID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
 
 		return
 	}
@@ -42,27 +49,14 @@ func (h *ParticipantsHTTPHandler) DeleteParticipant(rw http.ResponseWriter, r *h
 	responseHandler.NoContentResponse()
 }
 
-func getEventIDParticipantIDParams(r *http.Request) (int, int, error) {
-	const (
-		eventIDQueryParamKey       = "event_id"
-		participantIDQueryParamKey = "participant_id"
-	)
-
-	eventID, err := core_http_request.GetIntQueryParam(r, eventIDQueryParamKey)
+func getEventIDParam(r *http.Request) (int, error) {
+	eventID, err := core_http_request.GetIntQueryParam(r, "event_id")
 	if err != nil {
-		return 0, 0, fmt.Errorf("get 'event_id' query param: %w", err)
+		return 0, fmt.Errorf("get 'event_id' query param: %w", err)
 	}
 	if eventID == nil {
-		return 0, 0, fmt.Errorf("'event_id' query param is required: %w", core_errors.ErrInvalidArgument)
+		return 0, fmt.Errorf("'event_id' query param is required: %w", core_errors.ErrInvalidArgument)
 	}
 
-	participantID, err := core_http_request.GetIntQueryParam(r, participantIDQueryParamKey)
-	if err != nil {
-		return 0, 0, fmt.Errorf("get 'participant_id' query param: %w", err)
-	}
-	if participantID == nil {
-		return 0, 0, fmt.Errorf("'participant_id' query param is required: %w", core_errors.ErrInvalidArgument)
-	}
-
-	return *eventID, *participantID, nil
+	return *eventID, nil
 }

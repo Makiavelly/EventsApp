@@ -6,17 +6,17 @@ import (
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 	core_http_types "github.com/Makiavelly/EventsApp/internal/core/transport/http/types"
 )
 
 type CreateEventRequest struct {
-	CreatorUserID int                       `json:"creator_user_id" validate:"required"            example:"1"`
-	Title         string                    `json:"title" validate:"required,min=1,max=50"         example:"Sport"`
-	Description   *string                   `json:"description" validate:"omitempty,min=1,max=300" example:"Go to footbal"`
-	Location      *core_http_types.Location `json:"location" validate:"omitempty"`
-	DateMeeting   *time.Time                `json:"date_meeting" validate:"omitempty,gt"           example:"2026-07-01T13-52-14.752729"`
+	Title       string                    `json:"title" validate:"required,min=1,max=50"         example:"Sport"`
+	Description *string                   `json:"description" validate:"omitempty,min=1,max=300" example:"Go to footbal"`
+	Location    *core_http_types.Location `json:"location" validate:"omitempty"`
+	DateMeeting *time.Time                `json:"date_meeting" validate:"omitempty,gt"           example:"2026-07-01T13-52-14.752729"`
 }
 
 type CreateEventResponse EventDTOResponse
@@ -25,6 +25,7 @@ type CreateEventResponse EventDTOResponse
 // @Summary 	Создать событие
 // @Description Создать новое событие в системе
 // @Tags 		events
+// @Security 	BearerAuth
 // @Accept 		json
 // @Produce 	json
 // @Param 		request body CreateEventRequest true "Create event тело запроса"
@@ -44,16 +45,21 @@ func (h *EventsHTTPHandler) CreateEvent(rw http.ResponseWriter, r *http.Request)
 
 		return
 	}
+	creatorID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
+		return
+	}
 
 	eventDomain := domain.NewEventUninitialized(
-		request.CreatorUserID,
+		creatorID,
 		request.Title,
 		request.Description,
 		locationDomainFromDTO(request.Location),
 		request.DateMeeting,
 	)
 
-	eventDomain, err := h.eventsService.CreateEvent(ctx, eventDomain)
+	eventDomain, err = h.eventsService.CreateEvent(ctx, eventDomain)
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to create event")
 

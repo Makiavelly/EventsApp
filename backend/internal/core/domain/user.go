@@ -47,7 +47,7 @@ func (u *User) Validate() error {
 	}
 
 	passwordLength := len([]rune(u.Password))
-	if passwordLength < 6 || passwordLength > 100 {
+	if passwordLength < 6 || passwordLength > 72 {
 		return fmt.Errorf("invalid 'Name' len: %d: %w", passwordLength, core_errors.ErrInvalidArgument)
 	}
 
@@ -93,7 +93,7 @@ func (u *User) ApplyPatch(patch UserPatch) error {
 		tmp.Password = *patch.Password.Value
 	}
 
-	if err := u.Validate(); err != nil {
+	if err := tmp.Validate(); err != nil {
 		return fmt.Errorf("validate patched user: %w", err)
 	}
 

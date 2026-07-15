@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
@@ -12,6 +13,7 @@ import (
 // @Summary 	Удалить событие
 // @Description Удалить событие по ID
 // @Tags 		events
+// @Security 	BearerAuth
 // @Param 		id path int true "ID события"
 // @Success 	204 "Событие успешно удалено"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
@@ -29,8 +31,14 @@ func (h *EventsHTTPHandler) DeleteEvent(rw http.ResponseWriter, r *http.Request)
 
 		return
 	}
+	actorUserID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
 
-	if err := h.eventsService.DeleteEvent(ctx, eventID); err != nil {
+		return
+	}
+
+	if err := h.eventsService.DeleteEvent(ctx, eventID, actorUserID); err != nil {
 		responseHandler.ErrorResponse(err, "failed to delete event")
 
 		return

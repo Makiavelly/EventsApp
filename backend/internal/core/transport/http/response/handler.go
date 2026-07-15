@@ -64,13 +64,21 @@ func (h *HTTPResponseHandler) ErrorResponse(err error, msg string) {
 		statusCode = http.StatusConflict
 		logFunc = h.log.Warn
 
+	case errors.Is(err, core_errors.ErrUnauthorized):
+		statusCode = http.StatusUnauthorized
+		logFunc = h.log.Warn
+
+	case errors.Is(err, core_errors.ErrForbidden):
+		statusCode = http.StatusForbidden
+		logFunc = h.log.Warn
+
 	default:
 		statusCode = http.StatusInternalServerError
 		logFunc = h.log.Error
 	}
 
 	logFunc(msg, zap.Error(err))
-	h.errorResponse(statusCode, err, msg)
+	h.errorResponse(statusCode, publicError(statusCode, err), msg)
 }
 
 func (h *HTTPResponseHandler) PanicResponse(p any, msg string) {
@@ -78,14 +86,23 @@ func (h *HTTPResponseHandler) PanicResponse(p any, msg string) {
 	err := fmt.Errorf("unexpected panic %v", p)
 
 	h.log.Error(msg, zap.Error(err))
-	h.errorResponse(statusCode, err, msg)
+	h.errorResponse(statusCode, http.StatusText(statusCode), msg)
 }
 
-func (h *HTTPResponseHandler) errorResponse(statusCode int, err error, msg string) {
+func (h *HTTPResponseHandler) errorResponse(statusCode int, errorText string, msg string) {
 	response := ErrorResponse{
-		Error:   err.Error(),
+		Error:   errorText,
 		Message: msg,
 	}
 
 	h.JSONResponse(response, statusCode)
+}
+
+func publicError(statusCode int, err error) string {
+	switch statusCode {
+	case http.StatusUnauthorized, http.StatusForbidden, http.StatusInternalServerError:
+		return http.StatusText(statusCode)
+	default:
+		return err.Error()
+	}
 }

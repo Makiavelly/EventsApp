@@ -18,11 +18,91 @@ definitions:
         example: -30.3456
         type: number
     type: object
-  internal_features_events_transport_http.CreateEventRequest:
+  internal_features_auth_transport_http.AuthUserDTOResponse:
     properties:
-      creator_user_id:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
         example: 1
         type: integer
+      name:
+        example: Alex
+        type: string
+    type: object
+  internal_features_auth_transport_http.GetCurrentUserResponse:
+    properties:
+      email:
+        example: alex@mail.ru
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Alex
+        type: string
+    type: object
+  internal_features_auth_transport_http.LoginRequest:
+    properties:
+      email:
+        example: alex@mail.ru
+        maxLength: 100
+        minLength: 9
+        type: string
+      password:
+        example: alexpswd
+        maxLength: 72
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_features_auth_transport_http.LoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/internal_features_auth_transport_http.AuthUserDTOResponse'
+    type: object
+  internal_features_auth_transport_http.RefreshResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/internal_features_auth_transport_http.AuthUserDTOResponse'
+    type: object
+  internal_features_auth_transport_http.RegisterRequest:
+    properties:
+      email:
+        example: alex@mail.ru
+        maxLength: 100
+        minLength: 9
+        type: string
+      name:
+        example: Alex
+        maxLength: 100
+        minLength: 1
+        type: string
+      password:
+        example: alexpswd
+        maxLength: 72
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  internal_features_auth_transport_http.RegisterResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/internal_features_auth_transport_http.AuthUserDTOResponse'
+    type: object
+  internal_features_events_transport_http.CreateEventRequest:
+    properties:
       date_meeting:
         example: 2026-07-01T13-52-14.752729
         type: string
@@ -39,7 +119,6 @@ definitions:
         minLength: 1
         type: string
     required:
-    - creator_user_id
     - title
     type: object
   internal_features_events_transport_http.CreateEventResponse:
@@ -142,12 +221,8 @@ definitions:
       event_id:
         example: 1
         type: integer
-      participant_id:
-        example: 1
-        type: integer
     required:
     - event_id
-    - participant_id
     type: object
   internal_features_participants_events_transport_http.CreateParticipantResponse:
     properties:
@@ -202,44 +277,6 @@ definitions:
       name:
         example: Alex
         type: string
-      password:
-        type: string
-    type: object
-  internal_features_users_transport_http.CreateUserRequest:
-    properties:
-      email:
-        example: alex@mail.ru
-        maxLength: 100
-        minLength: 9
-        type: string
-      name:
-        example: Alex
-        maxLength: 100
-        minLength: 1
-        type: string
-      password:
-        example: alexpswd
-        maxLength: 100
-        minLength: 6
-        type: string
-    required:
-    - email
-    - name
-    - password
-    type: object
-  internal_features_users_transport_http.CreateUserResponse:
-    properties:
-      email:
-        example: alex@mail.ru
-        type: string
-      id:
-        example: 1
-        type: integer
-      name:
-        example: Alex
-        type: string
-      password:
-        type: string
     type: object
   internal_features_users_transport_http.GetUserResponse:
     properties:
@@ -251,8 +288,6 @@ definitions:
         type: integer
       name:
         example: Alex
-        type: string
-      password:
         type: string
     type: object
   internal_features_users_transport_http.PatchUserRequest:
@@ -275,8 +310,6 @@ definitions:
       name:
         example: Alex
         type: string
-      password:
-        type: string
     type: object
   internal_features_users_transport_http.UserDTOResponse:
     properties:
@@ -289,8 +322,6 @@ definitions:
       name:
         example: Alex
         type: string
-      password:
-        type: string
     type: object
 host: 172.20.247.149:5050
 info:
@@ -299,6 +330,136 @@ info:
   title: GoLang EventsApp API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Проверить учётные данные и получить токен доступа
+      parameters:
+      - description: Login тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_auth_transport_http.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешная аутентификация
+          schema:
+            $ref: '#/definitions/internal_features_auth_transport_http.LoginResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Войти в аккаунт
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Отозвать refresh-сессию и удалить HttpOnly cookie
+      responses:
+        "204":
+          description: Успешный выход
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Выйти из аккаунта
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Получить профиль пользователя из токена доступа
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Текущий пользователь
+          schema:
+            $ref: '#/definitions/internal_features_auth_transport_http.GetCurrentUserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить текущего пользователя
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Ротировать refresh token из HttpOnly cookie и выдать новый access
+        JWT
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Токены обновлены
+          schema:
+            $ref: '#/definitions/internal_features_auth_transport_http.RefreshResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Обновить access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Создать аккаунт и получить токен доступа
+      parameters:
+      - description: Register тело запроса
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_auth_transport_http.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Пользователь зарегистрирован
+          schema:
+            $ref: '#/definitions/internal_features_auth_transport_http.RegisterResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "409":
+          description: Email already registered
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      summary: Зарегистрировать пользователя
+      tags:
+      - auth
   /events:
     get:
       description: Получить список событий с опциональным поиском по локации и пагинацией
@@ -379,6 +540,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Создать событие
       tags:
       - events
@@ -406,6 +569,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Удалить событие
       tags:
       - events
@@ -479,6 +644,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Обновить событие
       tags:
       - events
@@ -489,11 +656,6 @@ paths:
       - description: ID события
         in: query
         name: event_id
-        required: true
-        type: integer
-      - description: ID участника
-        in: query
-        name: participant_id
         required: true
         type: integer
       responses:
@@ -511,6 +673,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Удалить участника события
       tags:
       - participants_events
@@ -566,11 +730,6 @@ paths:
         name: event_id
         required: true
         type: integer
-      - description: ID участника
-        in: query
-        name: participant_id
-        required: true
-        type: integer
       - description: Patch participant тело запроса
         in: body
         name: request
@@ -596,6 +755,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Обновить участника события
       tags:
       - participants_events
@@ -633,6 +794,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Добавить участника события
       tags:
       - participants_events
@@ -672,35 +835,6 @@ paths:
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
       summary: Получить пользователей
-      tags:
-      - users
-    post:
-      consumes:
-      - application/json
-      description: Создать нового пользователя в системе
-      parameters:
-      - description: Create user тело запроса
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_features_users_transport_http.CreateUserRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Успешно созданный пользователь
-          schema:
-            $ref: '#/definitions/internal_features_users_transport_http.CreateUserResponse'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-      summary: Создать пользователя
       tags:
       - users
   /users/{id}:
@@ -802,4 +936,9 @@ paths:
       summary: Обновить пользователя
       tags:
       - users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

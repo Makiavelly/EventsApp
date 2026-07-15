@@ -2,9 +2,12 @@ package users_postgres_repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
+	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
+	core_postgres_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool"
 )
 
 func (r *UsersRepository) CreateUser(
@@ -30,6 +33,9 @@ func (r *UsersRepository) CreateUser(
 		&userModel.Password,
 	)
 	if err != nil {
+		if errors.Is(err, core_postgres_pool.ErrViolatesUnique) {
+			return domain.User{}, fmt.Errorf("email is already registered: %w", core_errors.ErrConflict)
+		}
 		return domain.User{}, fmt.Errorf("scan error: %w", err)
 	}
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_server "github.com/Makiavelly/EventsApp/internal/core/transport/http/server"
 )
 
@@ -45,12 +46,13 @@ type ParticipantsService interface {
 	) (domain.Participant, error)
 }
 
-func (h *ParticipantsHTTPHandler) Routes() []core_http_server.Route {
+func (h *ParticipantsHTTPHandler) Routes(auth core_http_middleware.Middleware) []core_http_server.Route {
 	return []core_http_server.Route{
 		{
-			Method:  http.MethodPost,
-			Path:    "/participants",
-			Handler: h.CreateParticipant,
+			Method:     http.MethodPost,
+			Path:       "/participants",
+			Handler:    h.CreateParticipant,
+			Middleware: []core_http_middleware.Middleware{auth},
 		},
 		{
 			Method:  http.MethodGet,
@@ -58,14 +60,16 @@ func (h *ParticipantsHTTPHandler) Routes() []core_http_server.Route {
 			Handler: h.GetParticipantsEvents,
 		},
 		{
-			Method:  http.MethodDelete,
-			Path:    "/participants",
-			Handler: h.DeleteParticipant,
+			Method:     http.MethodDelete,
+			Path:       "/participants",
+			Handler:    h.DeleteParticipant,
+			Middleware: []core_http_middleware.Middleware{auth},
 		},
 		{
-			Method:  http.MethodPatch,
-			Path:    "/participants",
-			Handler: h.PatchParticipant,
+			Method:     http.MethodPatch,
+			Path:       "/participants",
+			Handler:    h.PatchParticipant,
+			Middleware: []core_http_middleware.Middleware{auth},
 		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_request "github.com/Makiavelly/EventsApp/internal/core/transport/http/request"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
 )
@@ -22,7 +23,7 @@ type PatchParticipantResponse ParticipantDTOResponse
 // @Accept 		json
 // @Produce 	json
 // @Param 		event_id query int true "ID события"
-// @Param 		participant_id query int true "ID участника"
+// @Security 	BearerAuth
 // @Param 		request body PatchParticipantRequest true "Patch participant тело запроса"
 // @Success 	200 {object} PatchParticipantResponse "Успешно обновленный участник события"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
@@ -34,9 +35,15 @@ func (h *ParticipantsHTTPHandler) PatchParticipant(rw http.ResponseWriter, r *ht
 	log := core_logger.FromContext(ctx)
 	responseHandler := core_http_response.NewHTTPResponseHandler(log, rw)
 
-	eventID, participantID, err := getEventIDParticipantIDParams(r)
+	eventID, err := getEventIDParam(r)
 	if err != nil {
-		responseHandler.ErrorResponse(err, "failed to get 'event_id'/'participant_id' query param")
+		responseHandler.ErrorResponse(err, "failed to get 'event_id' query param")
+
+		return
+	}
+	participantID, err := core_http_middleware.UserID(ctx)
+	if err != nil {
+		responseHandler.ErrorResponse(err, "authentication required")
 
 		return
 	}

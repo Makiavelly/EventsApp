@@ -18,7 +18,6 @@ export type Event = {
 };
 
 export type CreateEventPayload = {
-  creator_user_id: number;
   title: string;
   description?: string;
   location?: Location;
@@ -37,13 +36,22 @@ export type User = {
   id: number;
   name: string;
   email: string;
-  password?: string;
 };
 
 export type CreateUserPayload = {
   name: string;
   email: string;
   password: string;
+};
+
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
+export type AuthResponse = {
+  token: string;
+  user: User;
 };
 
 export type ParticipantUser = User;
@@ -55,5 +63,4 @@ export type EventParticipants = {
 
 export type CreateParticipantPayload = {
   event_id: number;
-  participant_id: number;
 };
