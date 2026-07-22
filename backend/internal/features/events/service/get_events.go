@@ -14,6 +14,9 @@ func (s *EventsService) GetEvents(
 	longitude *float64,
 	radius *int,
 	bounds *domain.EventBounds,
+	creatorID *int,
+	participantID *int,
+	withoutLocation bool,
 	limit *int,
 	offset *int,
 ) ([]domain.Event, error) {
@@ -57,6 +60,16 @@ func (s *EventsService) GetEvents(
 		}
 	}
 
+	if creatorID != nil && *creatorID <= 0 {
+		return nil, fmt.Errorf("creator ID must be positive: %w", core_errors.ErrInvalidArgument)
+	}
+	if participantID != nil && *participantID <= 0 {
+		return nil, fmt.Errorf("participant ID must be positive: %w", core_errors.ErrInvalidArgument)
+	}
+	if withoutLocation && (hasLatitude || bounds != nil) {
+		return nil, fmt.Errorf("without_location can't be combined with spatial filters: %w", core_errors.ErrInvalidArgument)
+	}
+
 	resolvedLimit, resolvedOffset, err := domain.ResolvePagination(limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("validate pagination: %w", err)
@@ -68,6 +81,9 @@ func (s *EventsService) GetEvents(
 		longitude,
 		radius,
 		bounds,
+		creatorID,
+		participantID,
+		withoutLocation,
 		&resolvedLimit,
 		&resolvedOffset,
 	)

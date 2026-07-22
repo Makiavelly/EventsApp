@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../api/client";
-import { errorMessage, formatDateTime, formatLocation, toOptionalNumber } from "./format";
+import { distanceMeters, errorMessage, formatAutoDelete, formatDateTime, formatLocation, toOptionalNumber } from "./format";
 
 describe("format helpers", () => {
   it("formats absent and present locations", () => {
@@ -21,5 +21,11 @@ describe("format helpers", () => {
     expect(toOptionalNumber("  ")).toBeUndefined();
     expect(toOptionalNumber("12.5")).toBe(12.5);
     expect(toOptionalNumber("invalid")).toBeUndefined();
+  });
+
+  it("calculates distance and formats lifecycle policy", () => {
+    expect(distanceMeters({ latitude: 55.75, longitude: 37.61 }, { latitude: 55.75, longitude: 37.61 })).toBe(0);
+    expect(formatAutoDelete("after_interval", 7200)).toBe("Удалить через 2 ч после начала");
+    expect(formatAutoDelete("never")).toBe("Не удалять автоматически");
   });
 });

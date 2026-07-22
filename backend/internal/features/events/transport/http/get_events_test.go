@@ -16,7 +16,7 @@ func TestGetEventsParamsBounds(t *testing.T) {
 		nil,
 	)
 
-	_, _, _, bounds, limit, offset, err := getEventsParams(request)
+	_, _, _, bounds, _, _, _, limit, offset, err := getEventsParams(request)
 	if err != nil {
 		t.Fatalf("getEventsParams() unexpected error = %v", err)
 	}
@@ -34,7 +34,7 @@ func TestGetEventsParamsBounds(t *testing.T) {
 func TestGetEventsParamsRejectsPartialBounds(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/events?west=37.1&south=55.5", nil)
 
-	_, _, _, _, _, _, err := getEventsParams(request)
+	_, _, _, _, _, _, _, _, _, err := getEventsParams(request)
 	if !errors.Is(err, core_errors.ErrInvalidArgument) {
 		t.Fatalf("getEventsParams() error = %v, want ErrInvalidArgument", err)
 	}

@@ -22,6 +22,9 @@ type EventsRepository interface {
 		longitude *float64,
 		radius *int,
 		bounds *domain.EventBounds,
+		creatorID *int,
+		participantID *int,
+		withoutLocation bool,
 		limit *int,
 		offset *int,
 	) ([]domain.Event, error)
@@ -30,6 +33,8 @@ type EventsRepository interface {
 		ctx context.Context,
 		id int,
 	) (domain.Event, error)
+
+	DeleteExpiredEvents(ctx context.Context) (int64, error)
 
 	DeleteEvent(
 		ctx context.Context,

@@ -19,10 +19,11 @@ type eventsRepositoryStub struct {
 func (*eventsRepositoryStub) CreateEvent(_ context.Context, event domain.Event) (domain.Event, error) {
 	return event, nil
 }
-func (r *eventsRepositoryStub) GetEvents(context.Context, *float64, *float64, *int, *domain.EventBounds, *int, *int) ([]domain.Event, error) {
+func (r *eventsRepositoryStub) GetEvents(context.Context, *float64, *float64, *int, *domain.EventBounds, *int, *int, bool, *int, *int) ([]domain.Event, error) {
 	r.getEventsCalls++
 	return nil, nil
 }
+func (*eventsRepositoryStub) DeleteExpiredEvents(context.Context) (int64, error) { return 0, nil }
 func (r *eventsRepositoryStub) GetEvent(context.Context, int) (domain.Event, error) {
 	return r.event, nil
 }
@@ -61,7 +62,7 @@ func TestGetEventsRejectsOversizedPageBeforeRepository(t *testing.T) {
 	service := NewEventsService(repository)
 	limit := domain.MaxPageLimit + 1
 
-	_, err := service.GetEvents(context.Background(), nil, nil, nil, nil, &limit, nil)
+	_, err := service.GetEvents(context.Background(), nil, nil, nil, nil, nil, nil, false, &limit, nil)
 	if !errors.Is(err, core_errors.ErrInvalidArgument) {
 		t.Fatalf("GetEvents() error = %v, want ErrInvalidArgument", err)
 	}

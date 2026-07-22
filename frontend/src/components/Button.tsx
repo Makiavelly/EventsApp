@@ -9,10 +9,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-ink text-white hover:bg-black",
-  secondary: "border border-ink/12 bg-white text-ink hover:border-ink/25 hover:bg-ink/[0.03]",
-  ghost: "text-ink hover:bg-ink/[0.06]",
-  danger: "bg-clay text-white hover:bg-[#c9443b]",
+  primary: "bg-cocoa text-surface shadow-panel hover:bg-leaf",
+  secondary: "border border-line bg-surface text-ink hover:bg-soft",
+  ghost: "text-ink hover:bg-soft",
+  danger: "bg-clay text-white shadow-panel hover:brightness-90",
 };
 
 export function Button({
@@ -29,7 +29,7 @@ export function Button({
       type={type}
       disabled={disabled}
       className={clsx(
-        "focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-55",
+        "focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100",
         variants[variant],
         className,
       )}

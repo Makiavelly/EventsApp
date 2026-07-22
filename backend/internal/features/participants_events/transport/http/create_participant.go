@@ -58,7 +58,7 @@ func (h *ParticipantsHTTPHandler) CreateParticipant(rw http.ResponseWriter, r *h
 		return
 	}
 
-	participantDomain := domain.NewParticipantUninitialized(
+	participantDomain := domain.NewParticipant(
 		request.EventID,
 		participantID,
 	)

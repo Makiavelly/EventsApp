@@ -13,19 +13,27 @@ import (
 )
 
 type CreateEventRequest struct {
-	Title       string                    `json:"title"        example:"Sport"`
-	Description *string                   `json:"description"  example:"Go to football"`
-	Location    *core_http_types.Location `json:"location"`
-	DateMeeting *time.Time                `json:"date_meeting" example:"2026-08-10T18:00:00Z"`
+	Title                  string                       `json:"title"        example:"Sport"`
+	Description            *string                      `json:"description"  example:"Go to football"`
+	Location               *core_http_types.Location    `json:"location"`
+	DateMeeting            *time.Time                   `json:"date_meeting" example:"2026-08-10T18:00:00Z"`
+	AutoDeletePolicy       domain.EventAutoDeletePolicy `json:"auto_delete_policy" example:"never"`
+	AutoDeleteAfterSeconds *int                         `json:"auto_delete_after_seconds" example:"7200"`
 }
 
 func (r *CreateEventRequest) Validate() error {
-	event := domain.NewEventUninitialized(
+	if r.AutoDeletePolicy == "" {
+		r.AutoDeletePolicy = domain.EventAutoDeleteNever
+	}
+
+	event := domain.NewEventUninitializedWithPolicy(
 		1,
 		r.Title,
 		r.Description,
 		locationDomainFromDTO(r.Location),
 		r.DateMeeting,
+		r.AutoDeletePolicy,
+		r.AutoDeleteAfterSeconds,
 	)
 
 	return event.Validate()
@@ -65,12 +73,14 @@ func (h *EventsHTTPHandler) CreateEvent(rw http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	eventDomain := domain.NewEventUninitialized(
+	eventDomain := domain.NewEventUninitializedWithPolicy(
 		creatorID,
 		request.Title,
 		request.Description,
 		locationDomainFromDTO(request.Location),
 		request.DateMeeting,
+		request.AutoDeletePolicy,
+		request.AutoDeleteAfterSeconds,
 	)
 
 	eventDomain, err = h.eventsService.CreateEvent(ctx, eventDomain)

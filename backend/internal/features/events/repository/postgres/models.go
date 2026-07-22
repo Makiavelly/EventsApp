@@ -7,13 +7,15 @@ import (
 )
 
 type EventModel struct {
-	ID          int
-	CreatorID   int
-	Title       string
-	Description *string
-	Latitude    *float64
-	Longitude   *float64
-	DateMeeting *time.Time
+	ID                     int
+	CreatorID              int
+	Title                  string
+	Description            *string
+	Latitude               *float64
+	Longitude              *float64
+	DateMeeting            *time.Time
+	AutoDeletePolicy       string
+	AutoDeleteAfterSeconds *int
 }
 
 func eventDomainFromModel(eventModel EventModel) domain.Event {
@@ -27,13 +29,15 @@ func eventDomainFromModel(eventModel EventModel) domain.Event {
 		}
 	}
 
-	return domain.NewEvent(
+	return domain.NewEventWithPolicy(
 		eventModel.ID,
 		eventModel.CreatorID,
 		eventModel.Title,
 		eventModel.Description,
 		location,
 		eventModel.DateMeeting,
+		domain.EventAutoDeletePolicy(eventModel.AutoDeletePolicy),
+		eventModel.AutoDeleteAfterSeconds,
 	)
 }
 

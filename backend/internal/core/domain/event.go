@@ -12,15 +12,27 @@ const (
 	EventTitleMaxLength       = 50
 	EventDescriptionMinLength = 1
 	EventDescriptionMaxLength = 300
+	EventAutoDeleteMinSeconds = 60
+	EventAutoDeleteMaxSeconds = 365 * 24 * 60 * 60
+)
+
+type EventAutoDeletePolicy string
+
+const (
+	EventAutoDeleteAtStart       EventAutoDeletePolicy = "at_start"
+	EventAutoDeleteAfterInterval EventAutoDeletePolicy = "after_interval"
+	EventAutoDeleteNever         EventAutoDeletePolicy = "never"
 )
 
 type Event struct {
-	ID          int
-	CreatorID   int
-	Title       string
-	Description *string
-	Location    *EventLocation
-	DateMeeting *time.Time
+	ID                     int
+	CreatorID              int
+	Title                  string
+	Description            *string
+	Location               *EventLocation
+	DateMeeting            *time.Time
+	AutoDeletePolicy       EventAutoDeletePolicy
+	AutoDeleteAfterSeconds *int
 }
 
 func NewEvent(
@@ -32,13 +44,31 @@ func NewEvent(
 	DateMeeting *time.Time,
 ) Event {
 	return Event{
-		ID:          id,
-		CreatorID:   creatorID,
-		Title:       title,
-		Description: description,
-		Location:    location,
-		DateMeeting: DateMeeting,
+		ID:               id,
+		CreatorID:        creatorID,
+		Title:            title,
+		Description:      description,
+		Location:         location,
+		DateMeeting:      DateMeeting,
+		AutoDeletePolicy: EventAutoDeleteNever,
 	}
+}
+
+func NewEventWithPolicy(
+	id int,
+	creatorID int,
+	title string,
+	description *string,
+	location *EventLocation,
+	dateMeeting *time.Time,
+	autoDeletePolicy EventAutoDeletePolicy,
+	autoDeleteAfterSeconds *int,
+) Event {
+	event := NewEvent(id, creatorID, title, description, location, dateMeeting)
+	event.AutoDeletePolicy = autoDeletePolicy
+	event.AutoDeleteAfterSeconds = autoDeleteAfterSeconds
+
+	return event
 }
 
 func NewEventUninitialized(
@@ -49,13 +79,30 @@ func NewEventUninitialized(
 	dateMeeting *time.Time,
 ) Event {
 	return Event{
-		ID:          UninitializedID,
-		CreatorID:   creatorID,
-		Title:       title,
-		Description: description,
-		Location:    location,
-		DateMeeting: dateMeeting,
+		ID:               UninitializedID,
+		CreatorID:        creatorID,
+		Title:            title,
+		Description:      description,
+		Location:         location,
+		DateMeeting:      dateMeeting,
+		AutoDeletePolicy: EventAutoDeleteNever,
 	}
+}
+
+func NewEventUninitializedWithPolicy(
+	creatorID int,
+	title string,
+	description *string,
+	location *EventLocation,
+	dateMeeting *time.Time,
+	autoDeletePolicy EventAutoDeletePolicy,
+	autoDeleteAfterSeconds *int,
+) Event {
+	event := NewEventUninitialized(creatorID, title, description, location, dateMeeting)
+	event.AutoDeletePolicy = autoDeletePolicy
+	event.AutoDeleteAfterSeconds = autoDeleteAfterSeconds
+
+	return event
 }
 
 func (e *Event) Validate() error {
@@ -70,6 +117,45 @@ func (e *Event) Validate() error {
 	}
 	if err := ValidateEventDateMeeting(e.DateMeeting, time.Now()); err != nil {
 		return err
+	}
+	if err := ValidateEventAutoDelete(e.AutoDeletePolicy, e.AutoDeleteAfterSeconds, e.DateMeeting); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ValidateEventAutoDelete(
+	policy EventAutoDeletePolicy,
+	afterSeconds *int,
+	dateMeeting *time.Time,
+) error {
+	switch policy {
+	case EventAutoDeleteNever:
+		if afterSeconds != nil {
+			return fmt.Errorf("'AutoDeleteAfterSeconds' must be NULL for 'never': %w", core_errors.ErrInvalidArgument)
+		}
+	case EventAutoDeleteAtStart:
+		if dateMeeting == nil {
+			return fmt.Errorf("'DateMeeting' is required for 'at_start': %w", core_errors.ErrInvalidArgument)
+		}
+		if afterSeconds != nil {
+			return fmt.Errorf("'AutoDeleteAfterSeconds' must be NULL for 'at_start': %w", core_errors.ErrInvalidArgument)
+		}
+	case EventAutoDeleteAfterInterval:
+		if dateMeeting == nil {
+			return fmt.Errorf("'DateMeeting' is required for 'after_interval': %w", core_errors.ErrInvalidArgument)
+		}
+		if afterSeconds == nil || *afterSeconds < EventAutoDeleteMinSeconds || *afterSeconds > EventAutoDeleteMaxSeconds {
+			return fmt.Errorf(
+				"'AutoDeleteAfterSeconds' must be between %d and %d: %w",
+				EventAutoDeleteMinSeconds,
+				EventAutoDeleteMaxSeconds,
+				core_errors.ErrInvalidArgument,
+			)
+		}
+	default:
+		return fmt.Errorf("invalid 'AutoDeletePolicy': %w", core_errors.ErrInvalidArgument)
 	}
 
 	return nil
@@ -147,10 +233,27 @@ func ValidateEventDateMeeting(dateMeeting *time.Time, now time.Time) error {
 }
 
 type EventPatch struct {
-	Title       Nullable[string]
-	Description Nullable[string]
-	Location    Nullable[EventLocation]
-	DateMeeting Nullable[time.Time]
+	Title                  Nullable[string]
+	Description            Nullable[string]
+	Location               Nullable[EventLocation]
+	DateMeeting            Nullable[time.Time]
+	AutoDeletePolicy       Nullable[EventAutoDeletePolicy]
+	AutoDeleteAfterSeconds Nullable[int]
+}
+
+func NewEventPatchWithPolicy(
+	title Nullable[string],
+	description Nullable[string],
+	location Nullable[EventLocation],
+	dateMeeting Nullable[time.Time],
+	autoDeletePolicy Nullable[EventAutoDeletePolicy],
+	autoDeleteAfterSeconds Nullable[int],
+) EventPatch {
+	patch := NewEventPatch(title, description, location, dateMeeting)
+	patch.AutoDeletePolicy = autoDeletePolicy
+	patch.AutoDeleteAfterSeconds = autoDeleteAfterSeconds
+
+	return patch
 }
 
 func NewEventPatch(
@@ -195,6 +298,10 @@ func (p *EventPatch) Validate() error {
 		}
 	}
 
+	if p.AutoDeletePolicy.Set && p.AutoDeletePolicy.Value == nil {
+		return fmt.Errorf("'AutoDeletePolicy' can't be patched to NULL: %w", core_errors.ErrInvalidArgument)
+	}
+
 	return nil
 }
 
@@ -221,6 +328,14 @@ func (e *Event) ApplyPatch(patch EventPatch) error {
 		tmp.DateMeeting = patch.DateMeeting.Value
 	}
 
+	if patch.AutoDeletePolicy.Set {
+		tmp.AutoDeletePolicy = *patch.AutoDeletePolicy.Value
+	}
+
+	if patch.AutoDeleteAfterSeconds.Set {
+		tmp.AutoDeleteAfterSeconds = patch.AutoDeleteAfterSeconds.Value
+	}
+
 	if err := ValidateEventTitle(tmp.Title); err != nil {
 		return fmt.Errorf("validate patched event title: %w", err)
 	}
@@ -229,6 +344,9 @@ func (e *Event) ApplyPatch(patch EventPatch) error {
 	}
 	if err := ValidateEventLocation(tmp.Location); err != nil {
 		return fmt.Errorf("validate patched event location: %w", err)
+	}
+	if err := ValidateEventAutoDelete(tmp.AutoDeletePolicy, tmp.AutoDeleteAfterSeconds, tmp.DateMeeting); err != nil {
+		return fmt.Errorf("validate patched event auto delete: %w", err)
 	}
 
 	*e = tmp

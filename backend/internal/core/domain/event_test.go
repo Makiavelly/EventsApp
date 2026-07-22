@@ -25,3 +25,29 @@ func TestEventApplyPatchAllowsOtherChangesAfterMeeting(t *testing.T) {
 		t.Fatalf("ApplyPatch() event = %+v", event)
 	}
 }
+
+func TestEventAutoDeleteAfterIntervalRequiresDateAndInterval(t *testing.T) {
+	t.Parallel()
+
+	event := NewEventUninitializedWithPolicy(
+		1,
+		"Meetup",
+		nil,
+		nil,
+		nil,
+		EventAutoDeleteAfterInterval,
+		nil,
+	)
+
+	if err := event.Validate(); err == nil {
+		t.Fatal("Validate() error = nil, want auto-delete configuration error")
+	}
+
+	future := time.Now().Add(time.Hour)
+	interval := 7200
+	event.DateMeeting = &future
+	event.AutoDeleteAfterSeconds = &interval
+	if err := event.Validate(); err != nil {
+		t.Fatalf("Validate() unexpected error = %v", err)
+	}
+}

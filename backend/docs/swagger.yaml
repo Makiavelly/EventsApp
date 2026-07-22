@@ -1,5 +1,15 @@
 basePath: /api/v1
 definitions:
+  github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy:
+    enum:
+    - at_start
+    - after_interval
+    - never
+    type: string
+    x-enum-varnames:
+    - EventAutoDeleteAtStart
+    - EventAutoDeleteAfterInterval
+    - EventAutoDeleteNever
   github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse:
     properties:
       error:
@@ -86,6 +96,13 @@ definitions:
     type: object
   internal_features_events_transport_http.CreateEventRequest:
     properties:
+      auto_delete_after_seconds:
+        example: 7200
+        type: integer
+      auto_delete_policy:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy'
+        example: never
       date_meeting:
         example: "2026-08-10T18:00:00Z"
         type: string
@@ -100,6 +117,13 @@ definitions:
     type: object
   internal_features_events_transport_http.CreateEventResponse:
     properties:
+      auto_delete_after_seconds:
+        example: 7200
+        type: integer
+      auto_delete_policy:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy'
+        example: never
       creator_user_id:
         example: 1
         type: integer
@@ -120,6 +144,13 @@ definitions:
     type: object
   internal_features_events_transport_http.EventDTOResponse:
     properties:
+      auto_delete_after_seconds:
+        example: 7200
+        type: integer
+      auto_delete_policy:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy'
+        example: never
       creator_user_id:
         example: 1
         type: integer
@@ -140,6 +171,13 @@ definitions:
     type: object
   internal_features_events_transport_http.GetEventResponse:
     properties:
+      auto_delete_after_seconds:
+        example: 7200
+        type: integer
+      auto_delete_policy:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy'
+        example: never
       creator_user_id:
         example: 1
         type: integer
@@ -160,6 +198,12 @@ definitions:
     type: object
   internal_features_events_transport_http.PatchEventRequest:
     properties:
+      auto_delete_after_seconds:
+        example: 7200
+        type: integer
+      auto_delete_policy:
+        example: never
+        type: string
       date_meeting:
         example: "2026-08-10T18:00:00Z"
         format: date-time
@@ -175,6 +219,13 @@ definitions:
     type: object
   internal_features_events_transport_http.PatchEventResponse:
     properties:
+      auto_delete_after_seconds:
+        example: 7200
+        type: integer
+      auto_delete_policy:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy'
+        example: never
       creator_user_id:
         example: 1
         type: integer
@@ -207,9 +258,6 @@ definitions:
       participant_id:
         example: 1
         type: integer
-      status:
-        example: planned
-        type: string
     type: object
   internal_features_participants_events_transport_http.EventParticipantDTOResponse:
     properties:
@@ -222,27 +270,6 @@ definitions:
       participant_id:
         example: 2
         type: integer
-      status:
-        example: planned
-        type: string
-    type: object
-  internal_features_participants_events_transport_http.PatchParticipantRequest:
-    properties:
-      status:
-        example: over
-        type: string
-    type: object
-  internal_features_participants_events_transport_http.PatchParticipantResponse:
-    properties:
-      event_id:
-        example: 1
-        type: integer
-      participant_id:
-        example: 1
-        type: integer
-      status:
-        example: planned
-        type: string
     type: object
   internal_features_users_transport_http.GetUserResponse:
     properties:
@@ -471,6 +498,18 @@ paths:
         in: query
         name: north
         type: number
+      - description: ID создателя
+        in: query
+        name: creator_id
+        type: integer
+      - description: ID участника
+        in: query
+        name: participant_id
+        type: integer
+      - description: Только события без координат
+        in: query
+        name: without_location
+        type: boolean
       - description: Лимит событий
         in: query
         name: limit
@@ -686,6 +725,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
+        "403":
+          description: Event creator cannot leave
+          schema:
+            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
         "404":
           description: Participant not found
           schema:
@@ -733,54 +776,6 @@ paths:
           schema:
             $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
       summary: Получить участников событий
-      tags:
-      - participants_events
-    patch:
-      consumes:
-      - application/json
-      description: Обновить статус участника события
-      parameters:
-      - description: ID события
-        in: query
-        name: event_id
-        required: true
-        type: integer
-      - description: Patch participant тело запроса
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_features_participants_events_transport_http.PatchParticipantRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешно обновленный участник события
-          schema:
-            $ref: '#/definitions/internal_features_participants_events_transport_http.PatchParticipantResponse'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "404":
-          description: Participant not found
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "413":
-          description: Payload too large
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Обновить участника события
       tags:
       - participants_events
     post:

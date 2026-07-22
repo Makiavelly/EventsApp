@@ -13,7 +13,7 @@ export function StatusView({ title, description, action, tone = "neutral" }: Sta
   return (
     <Card className="grid place-items-center px-5 py-12 text-center">
       <div className="mx-auto grid max-w-md gap-3">
-        <div className="mx-auto grid h-11 w-11 place-items-center rounded-lg bg-ink/[0.04] text-ink">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-soft text-cocoa">
           {tone === "loading" ? (
             <Loader2 className="animate-spin" size={22} />
           ) : (

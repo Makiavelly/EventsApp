@@ -105,10 +105,11 @@ func main() {
 	eventsRepository := events_postgres_repository.NewEventsRepository(pool)
 	eventsService := events_service.NewEventsService(eventsRepository)
 	eventsTransportHTTP := events_transport_http.NewEventsHTTPHandler(eventsService)
+	go runExpiredEventCleanup(ctx, eventsService, logger)
 
 	logger.Debug("initializing feature", zap.String("feature", "participants_events"))
 	participantsRepository := participants_postgres_repository.NewParticipantsRepository(pool)
-	participantsService := participants_service.NewParticipantService(participantsRepository)
+	participantsService := participants_service.NewParticipantService(participantsRepository, eventsService)
 	participantsTransportHTTP := participants_transport_http.NewParticipantsHTTPHandler(participantsService)
 
 	logger.Debug("initializing feature", zap.String("feature", "web"))
@@ -152,6 +153,43 @@ func main() {
 
 	if err := httpServer.Run(ctx); err != nil {
 		logger.Error("HTTP server run error", zap.Error(err))
+	}
+}
+
+type expiredEventCleaner interface {
+	CleanupExpiredEvents(ctx context.Context) (int64, error)
+}
+
+func runExpiredEventCleanup(
+	ctx context.Context,
+	cleaner expiredEventCleaner,
+	logger *core_logger.Logger,
+) {
+	const interval = time.Minute
+
+	cleanup := func() {
+		deleted, err := cleaner.CleanupExpiredEvents(ctx)
+		if err != nil {
+			logger.Error("failed to cleanup expired events", zap.Error(err))
+			return
+		}
+		if deleted > 0 {
+			logger.Info("expired events deleted", zap.Int64("count", deleted))
+		}
+	}
+
+	cleanup()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cleanup()
+		}
 	}
 }
 

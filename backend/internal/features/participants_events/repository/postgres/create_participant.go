@@ -20,18 +20,24 @@ func (r *ParticipantsRepository) CreateParticipant(
 	query := `
 	INSERT INTO eventsapp.participants_events (
 		event_id,
-		participant_id,
-		status
+		participant_id
 	)
-	VALUES (
-		$1,
-		$2,
-		$3
+	SELECT $1::bigint, $2::bigint
+	FROM eventsapp.events e
+	WHERE e.id = $1::bigint
+	AND NOT (
+		e.date_meeting IS NOT NULL
+		AND (
+			(e.auto_delete_policy = 'at_start' AND e.date_meeting <= CURRENT_TIMESTAMP)
+			OR (
+				e.auto_delete_policy = 'after_interval'
+				AND e.date_meeting + make_interval(secs => e.auto_delete_after_seconds) <= CURRENT_TIMESTAMP
+			)
+		)
 	)
 	RETURNING
 		event_id,
-		participant_id,
-		status;
+		participant_id;
 	`
 
 	row := r.pool.QueryRow(
@@ -39,16 +45,21 @@ func (r *ParticipantsRepository) CreateParticipant(
 		query,
 		participant.EventID,
 		participant.ParticipantID,
-		participant.Status,
 	)
 
 	var participantModel ParticipantModel
 	err := row.Scan(
 		&participantModel.EventID,
 		&participantModel.ParticipantID,
-		&participantModel.Status,
 	)
 	if err != nil {
+		if errors.Is(err, core_postgres_pool.ErrNoRows) {
+			return domain.Participant{}, fmt.Errorf(
+				"event with id='%d': %w",
+				participant.EventID,
+				core_errors.ErrNotFound,
+			)
+		}
 		if errors.Is(err, core_postgres_pool.ErrViolatesForeignKey) {
 			return domain.Participant{}, fmt.Errorf(
 				"%v: participant with id='%d' or event with id='%d': %w",

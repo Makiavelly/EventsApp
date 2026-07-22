@@ -1,6 +1,3 @@
 package domain
 
-var (
-	UninitializedID     = -1
-	UninitializedStatus = "planned"
-)
+var UninitializedID = -1

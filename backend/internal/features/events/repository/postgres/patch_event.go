@@ -28,8 +28,10 @@ func (r *EventsRepository) PatchEvent(
         	WHEN $3::double precision IS NULL OR $4::double precision IS NULL THEN NULL
         	ELSE ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography
     	END,
-		date_meeting=$5
-	WHERE id=$6
+		date_meeting=$5,
+		auto_delete_policy=$6,
+		auto_delete_after_seconds=$7
+	WHERE id=$8
 	RETURNING 
 		id, 
 		creator_id, 
@@ -37,7 +39,9 @@ func (r *EventsRepository) PatchEvent(
 		description, 
 		ST_Y(location::geometry) AS latitude,
     	ST_X(location::geometry) AS longitude,
-		date_meeting;
+		date_meeting,
+		auto_delete_policy,
+		auto_delete_after_seconds;
 	`
 
 	var (
@@ -57,6 +61,8 @@ func (r *EventsRepository) PatchEvent(
 		longitude,
 		latitude,
 		event.DateMeeting,
+		event.AutoDeletePolicy,
+		event.AutoDeleteAfterSeconds,
 		id,
 	)
 
@@ -70,6 +76,8 @@ func (r *EventsRepository) PatchEvent(
 		&eventModel.Latitude,
 		&eventModel.Longitude,
 		&eventModel.DateMeeting,
+		&eventModel.AutoDeletePolicy,
+		&eventModel.AutoDeleteAfterSeconds,
 	)
 	if err != nil {
 		if errors.Is(err, core_postgres_pool.ErrNoRows) {
@@ -81,7 +89,7 @@ func (r *EventsRepository) PatchEvent(
 		}
 		if errors.Is(err, core_postgres_pool.ErrViolatesCheck) {
 			return domain.Event{}, fmt.Errorf(
-				"event date violates database constraints: %w",
+				"event violates database constraints: %w",
 				core_errors.ErrInvalidArgument,
 			)
 		}

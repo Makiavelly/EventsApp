@@ -299,6 +299,24 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "ID создателя",
+                        "name": "creator_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID участника",
+                        "name": "participant_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Только события без координат",
+                        "name": "without_location",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "Лимит событий",
                         "name": "limit",
                         "in": "query"
@@ -748,82 +766,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Participant not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновить статус участника события",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "participants_events"
-                ],
-                "summary": "Обновить участника события",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID события",
-                        "name": "event_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "Patch participant тело запроса",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_features_participants_events_transport_http.PatchParticipantRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешно обновленный участник события",
-                        "schema": {
-                            "$ref": "#/definitions/internal_features_participants_events_transport_http.PatchParticipantResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    "403": {
+                        "description": "Event creator cannot leave",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Participant not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "413": {
-                        "description": "Payload too large",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -1071,6 +1021,19 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy": {
+            "type": "string",
+            "enum": [
+                "at_start",
+                "after_interval",
+                "never"
+            ],
+            "x-enum-varnames": [
+                "EventAutoDeleteAtStart",
+                "EventAutoDeleteAfterInterval",
+                "EventAutoDeleteNever"
+            ]
+        },
         "github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -1197,6 +1160,18 @@ const docTemplate = `{
         "internal_features_events_transport_http.CreateEventRequest": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "date_meeting": {
                     "type": "string",
                     "example": "2026-08-10T18:00:00Z"
@@ -1217,6 +1192,18 @@ const docTemplate = `{
         "internal_features_events_transport_http.CreateEventResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
@@ -1245,6 +1232,18 @@ const docTemplate = `{
         "internal_features_events_transport_http.EventDTOResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
@@ -1273,6 +1272,18 @@ const docTemplate = `{
         "internal_features_events_transport_http.GetEventResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
@@ -1301,6 +1312,14 @@ const docTemplate = `{
         "internal_features_events_transport_http.PatchEventRequest": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "type": "string",
+                    "example": "never"
+                },
                 "date_meeting": {
                     "type": "string",
                     "format": "date-time",
@@ -1322,6 +1341,18 @@ const docTemplate = `{
         "internal_features_events_transport_http.PatchEventResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
@@ -1366,10 +1397,6 @@ const docTemplate = `{
                 "participant_id": {
                     "type": "integer",
                     "example": 1
-                },
-                "status": {
-                    "type": "string",
-                    "example": "planned"
                 }
             }
         },
@@ -1387,36 +1414,6 @@ const docTemplate = `{
                 "participant_id": {
                     "type": "integer",
                     "example": 2
-                },
-                "status": {
-                    "type": "string",
-                    "example": "planned"
-                }
-            }
-        },
-        "internal_features_participants_events_transport_http.PatchParticipantRequest": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "example": "over"
-                }
-            }
-        },
-        "internal_features_participants_events_transport_http.PatchParticipantResponse": {
-            "type": "object",
-            "properties": {
-                "event_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "participant_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "status": {
-                    "type": "string",
-                    "example": "planned"
                 }
             }
         },

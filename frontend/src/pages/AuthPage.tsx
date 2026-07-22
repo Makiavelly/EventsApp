@@ -5,6 +5,7 @@ import { useAuth } from "../auth/useAuth";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { SlidingSelector } from "../components/SlidingSelector";
 import { errorMessage } from "../utils/format";
 
 type Mode = "login" | "register";
@@ -49,22 +50,19 @@ export function AuthPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-lg gap-6 py-4 sm:py-10">
-      <section className="text-center">
-        <p className="text-sm font-bold uppercase tracking-[0.22em] text-meadow">Аккаунт</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink sm:text-5xl">
-          {mode === "login" ? "С возвращением" : "Присоединяйтесь"}
-        </h1>
-        <p className="mt-4 text-sm leading-6 text-ink/60">
-          {mode === "login" ? "Войдите, чтобы создавать события и участвовать в них." : "Создайте аккаунт за несколько секунд."}
-        </p>
-      </section>
-
-      <Card className="p-5 sm:p-7">
-        <div className="mb-6 grid grid-cols-2 rounded-lg bg-ink/[0.05] p-1">
-          <Button variant={mode === "login" ? "primary" : "ghost"} onClick={() => changeMode("login")}>Вход</Button>
-          <Button variant={mode === "register" ? "primary" : "ghost"} onClick={() => changeMode("register")}>Регистрация</Button>
-        </div>
+    <div className="mx-auto grid min-h-[calc(100dvh-2.5rem)] max-w-lg place-items-center">
+      <Card className="w-full p-5 sm:p-7">
+        <h1 className="sr-only">{mode === "login" ? "Вход" : "Регистрация"}</h1>
+        <SlidingSelector
+          value={mode}
+          ariaLabel="Режим авторизации"
+          className="mb-6 w-full"
+          items={[
+            { value: "login", label: "Вход", icon: <LogIn size={17} /> },
+            { value: "register", label: "Регистрация", icon: <UserPlus size={17} /> },
+          ]}
+          onChange={changeMode}
+        />
 
         <form onSubmit={submit} className="grid gap-4">
           {mode === "register" ? (

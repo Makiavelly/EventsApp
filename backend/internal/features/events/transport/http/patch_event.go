@@ -13,10 +13,12 @@ import (
 )
 
 type PatchEventRequest struct {
-	Title       core_http_types.Nullable[string]                   `json:"title"        swaggertype:"string" example:"Meetup"`
-	Description core_http_types.Nullable[string]                   `json:"description"  swaggertype:"string" example:"Discuss Go backend development"`
-	Location    core_http_types.Nullable[core_http_types.Location] `json:"location"     swaggertype:"object"`
-	DateMeeting core_http_types.Nullable[time.Time]                `json:"date_meeting" swaggertype:"string" format:"date-time" example:"2026-08-10T18:00:00Z"`
+	Title                  core_http_types.Nullable[string]                       `json:"title"        swaggertype:"string" example:"Meetup"`
+	Description            core_http_types.Nullable[string]                       `json:"description"  swaggertype:"string" example:"Discuss Go backend development"`
+	Location               core_http_types.Nullable[core_http_types.Location]     `json:"location"     swaggertype:"object"`
+	DateMeeting            core_http_types.Nullable[time.Time]                    `json:"date_meeting" swaggertype:"string" format:"date-time" example:"2026-08-10T18:00:00Z"`
+	AutoDeletePolicy       core_http_types.Nullable[domain.EventAutoDeletePolicy] `json:"auto_delete_policy" swaggertype:"string" example:"never"`
+	AutoDeleteAfterSeconds core_http_types.Nullable[int]                          `json:"auto_delete_after_seconds" swaggertype:"integer" example:"7200"`
 }
 
 func (r *PatchEventRequest) Validate() error {
@@ -76,7 +78,7 @@ func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) 
 
 	eventDomain, err := h.eventsService.PatchEvent(ctx, eventID, actorUserID, eventPatch)
 	if err != nil {
-		responseHandler.ErrorResponse(err, "failed to patch task")
+		responseHandler.ErrorResponse(err, "failed to patch event")
 
 		return
 	}
@@ -87,7 +89,7 @@ func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) 
 }
 
 func eventPatchFromRequest(request PatchEventRequest) domain.EventPatch {
-	return domain.NewEventPatch(
+	return domain.NewEventPatchWithPolicy(
 		request.Title.ToDomain(),
 		request.Description.ToDomain(),
 		core_http_types.MapNullable(
@@ -97,5 +99,7 @@ func eventPatchFromRequest(request PatchEventRequest) domain.EventPatch {
 			},
 		),
 		request.DateMeeting.ToDomain(),
+		request.AutoDeletePolicy.ToDomain(),
+		request.AutoDeleteAfterSeconds.ToDomain(),
 	)
 }

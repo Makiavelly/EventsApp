@@ -8,9 +8,9 @@ import type {
   EventParticipant,
   EventsFilters,
   LoginPayload,
-  ParticipantStatus,
   PatchEventPayload,
   PatchUserPayload,
+  PublicUser,
   User,
 } from "./types";
 
@@ -197,6 +197,9 @@ export const api = {
         north: filters.bounds?.north,
         limit: filters.limit,
         offset: filters.offset,
+        creator_id: filters.creatorId,
+        participant_id: filters.participantId,
+        without_location: filters.withoutLocation ? "true" : undefined,
       }),
       { signal },
     );
@@ -204,6 +207,10 @@ export const api = {
 
   getEvent(id: number) {
     return request<Event>(buildUrl(`/events/${id}`));
+  },
+
+  getUser(id: number) {
+    return request<PublicUser>(buildUrl(`/users/${id}`));
   },
 
   createEvent(payload: CreateEventPayload) {
@@ -250,13 +257,6 @@ export const api = {
     return request(buildUrl("/participants"), {
       method: "POST",
       body: JSON.stringify(payload),
-    });
-  },
-
-  patchParticipant(eventId: number, status: ParticipantStatus) {
-    return request(buildUrl("/participants", { event_id: eventId }), {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
     });
   },
 

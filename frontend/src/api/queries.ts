@@ -4,7 +4,6 @@ import type {
   CreateEventPayload,
   CreateParticipantPayload,
   EventsFilters,
-  ParticipantStatus,
   PatchEventPayload,
 } from "./types";
 
@@ -12,6 +11,7 @@ export const queryKeys = {
   events: (filters: EventsFilters) => ["events", filters] as const,
   event: (id: number) => ["event", id] as const,
   participants: (eventId?: number) => ["participants", eventId] as const,
+  user: (id: number) => ["user", id] as const,
 };
 
 export function useEvents(filters: EventsFilters, enabled = true) {
@@ -20,6 +20,14 @@ export function useEvents(filters: EventsFilters, enabled = true) {
     queryFn: ({ signal }) => api.getEvents(filters, signal),
     enabled,
     placeholderData: (previousData) => previousData,
+  });
+}
+
+export function usePublicUser(id: number) {
+  return useQuery({
+    queryKey: queryKeys.user(id),
+    queryFn: () => api.getUser(id),
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 
@@ -81,17 +89,7 @@ export function useJoinEvent() {
     mutationFn: (payload: CreateParticipantPayload) => api.createParticipant(payload),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.participants(variables.event_id) });
-    },
-  });
-}
-
-export function useUpdateParticipation(eventId: number) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (status: ParticipantStatus) => api.patchParticipant(eventId, status),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.participants(eventId) });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
 }
@@ -103,6 +101,7 @@ export function useLeaveEvent(eventId: number) {
     mutationFn: () => api.deleteParticipant(eventId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.participants(eventId) });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
 }

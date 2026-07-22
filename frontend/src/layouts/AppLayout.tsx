@@ -1,18 +1,26 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
-import { Header } from "../components/Header";
-import { Sidebar } from "../components/Sidebar";
+import { Outlet, useLocation } from "react-router-dom";
+import { BottomNavigation } from "../components/BottomNavigation";
+import { clsx } from "clsx";
+import { useAuth } from "../auth/useAuth";
 
 export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { user } = useAuth();
+  const isHome = pathname === "/";
+  const isAuth = pathname === "/auth";
+  const isDiscover = pathname === "/discover";
+  const showBottomNavigation = Boolean(user) && !isHome && !isAuth;
 
   return (
     <div className="min-h-screen bg-mist text-ink">
-      <Header onMenuClick={() => setSidebarOpen(true)} />
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <Outlet />
+      <main className={clsx(
+        "w-full",
+        isDiscover ? "h-dvh overflow-hidden" : "mx-auto min-h-screen max-w-6xl px-4 pb-28 pt-5 sm:px-6 sm:pt-7 lg:px-8",
+        (isHome || isAuth) && "pb-5",
+      )}>
+        <div key={pathname} className={clsx("route-enter", isDiscover && "h-full")}><Outlet /></div>
       </main>
+      {showBottomNavigation ? <BottomNavigation /> : null}
     </div>
   );
 }

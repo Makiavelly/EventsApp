@@ -20,8 +20,7 @@ func (r *ParticipantsRepository) GetParticipants(
 	SELECT
 		pe.event_id,
 		u.id,
-		u.name,
-		pe.status
+		u.name
 	FROM eventsapp.participants_events pe
 	JOIN eventsapp.users u ON u.id = pe.participant_id
 	WHERE ($1::bigint IS NULL OR pe.event_id = $1)
@@ -43,7 +42,6 @@ func (r *ParticipantsRepository) GetParticipants(
 			&model.EventID,
 			&model.ParticipantID,
 			&model.Name,
-			&model.Status,
 		); err != nil {
 			return nil, fmt.Errorf("scan participant: %w", err)
 		}
