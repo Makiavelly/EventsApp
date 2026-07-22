@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
-import type { CreateEventPayload, CreateParticipantPayload, EventsFilters } from "./types";
+import type {
+  CreateEventPayload,
+  CreateParticipantPayload,
+  EventsFilters,
+  PatchEventPayload,
+} from "./types";
 
 export const queryKeys = {
   events: (filters: EventsFilters) => ["events", filters] as const,
   event: (id: number) => ["event", id] as const,
   participants: (eventId?: number) => ["participants", eventId] as const,
-  users: () => ["users"] as const,
-  user: (id?: number) => ["user", id] as const,
+  user: (id: number) => ["user", id] as const,
 };
 
 export function useEvents(filters: EventsFilters, enabled = true) {
@@ -16,6 +20,14 @@ export function useEvents(filters: EventsFilters, enabled = true) {
     queryFn: ({ signal }) => api.getEvents(filters, signal),
     enabled,
     placeholderData: (previousData) => previousData,
+  });
+}
+
+export function usePublicUser(id: number) {
+  return useQuery({
+    queryKey: queryKeys.user(id),
+    queryFn: () => api.getUser(id),
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 
@@ -38,11 +50,35 @@ export function useCreateEvent() {
   });
 }
 
+export function useUpdateEvent(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: PatchEventPayload) => api.patchEvent(id, payload),
+    onSuccess: (event) => {
+      queryClient.setQueryData(queryKeys.event(id), event);
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useDeleteEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => api.deleteEvent(id),
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: queryKeys.event(id) });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
 export function useParticipants(eventId?: number) {
   return useQuery({
     queryKey: queryKeys.participants(eventId),
     queryFn: () => api.getParticipants(eventId),
-    enabled: eventId !== undefined,
+    enabled: eventId !== undefined && Number.isFinite(eventId) && eventId > 0,
   });
 }
 
@@ -53,21 +89,19 @@ export function useJoinEvent() {
     mutationFn: (payload: CreateParticipantPayload) => api.createParticipant(payload),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.participants(variables.event_id) });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
 }
 
-export function useUsers() {
-  return useQuery({
-    queryKey: queryKeys.users(),
-    queryFn: () => api.getUsers(),
-  });
-}
+export function useLeaveEvent(eventId: number) {
+  const queryClient = useQueryClient();
 
-export function useUser(id?: number) {
-  return useQuery({
-    queryKey: queryKeys.user(id),
-    queryFn: () => api.getUser(id as number),
-    enabled: id !== undefined && Number.isFinite(id),
+  return useMutation({
+    mutationFn: () => api.deleteParticipant(eventId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.participants(eventId) });
+      void queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
   });
 }

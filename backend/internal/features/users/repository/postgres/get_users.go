@@ -12,7 +12,7 @@ func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int)
 	defer cancel()
 
 	query := `
-	SELECT id, name, email, password
+	SELECT id, name, email
 	FROM eventsapp.users
 	ORDER BY id ASC
 	LIMIT $1
@@ -33,7 +33,6 @@ func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int)
 			&userModel.ID,
 			&userModel.Name,
 			&userModel.Email,
-			&userModel.Password,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan users: %w", err)

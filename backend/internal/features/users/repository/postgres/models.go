@@ -3,10 +3,14 @@ package users_postgres_repository
 import "github.com/Makiavelly/EventsApp/internal/core/domain"
 
 type UserModel struct {
-	ID       int
-	Name     string
-	Email    string
-	Password string
+	ID    int
+	Name  string
+	Email string
+}
+
+type UserAccountModel struct {
+	UserModel
+	PasswordHash string
 }
 
 func userDomainsFromModels(users []UserModel) []domain.User {
@@ -17,7 +21,6 @@ func userDomainsFromModels(users []UserModel) []domain.User {
 			user.ID,
 			user.Name,
 			user.Email,
-			user.Password,
 		)
 	}
 

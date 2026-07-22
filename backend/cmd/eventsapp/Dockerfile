@@ -6,8 +6,10 @@ COPY . .
 RUN CGO_ENABLED=0 go build -o /app/cmd/eventsapp/exe /app/cmd/eventsapp
 
 FROM alpine:3.24
+RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /app/cmd/eventsapp/exe /app
 COPY --from=builder /app/public /app/public
+RUN mkdir -p /app/out/logs
 ENV PROJECT_ROOT=/app
-CMD [ "/app/exe" ]
+CMD ["/app/exe"]

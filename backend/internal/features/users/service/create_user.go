@@ -3,7 +3,6 @@ package users_service
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	"golang.org/x/crypto/bcrypt"
@@ -11,20 +10,25 @@ import (
 
 func (s *UsersService) CreateUser(
 	ctx context.Context,
-	user domain.User,
+	registration domain.UserRegistration,
 ) (domain.User, error) {
-	if err := user.Validate(); err != nil {
-		return domain.User{}, fmt.Errorf("validate user domain: %w", err)
+	if err := registration.NormalizeAndValidate(); err != nil {
+		return domain.User{}, fmt.Errorf("validate user registration: %w", err)
 	}
 
-	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword(
+		[]byte(registration.Password),
+		bcrypt.DefaultCost,
+	)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("hash password: %w", err)
 	}
-	user.Password = string(hashedPassword)
 
-	user, err = s.usersRepository.CreateUser(ctx, user)
+	user, err := s.usersRepository.CreateUser(
+		ctx,
+		registration.User,
+		string(hashedPassword),
+	)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("create user: %w", err)
 	}

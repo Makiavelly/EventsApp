@@ -10,9 +10,14 @@ import (
 )
 
 type RegisterRequest struct {
-	Name     string `json:"name"     validate:"required,min=1,max=100"               example:"Alex"`
-	Email    string `json:"email"    validate:"required,min=9,max=100,allowed_email" example:"alex@mail.ru"`
-	Password string `json:"password" validate:"required,min=6,max=72"                example:"alexpswd"`
+	Name     string `json:"name"     example:"Alex"`
+	Email    string `json:"email"    example:"alex@mail.ru"`
+	Password string `json:"password" example:"alexpswd"`
+}
+
+func (r *RegisterRequest) Validate() error {
+	registration := domain.NewUserRegistration(r.Name, r.Email, r.Password)
+	return registration.NormalizeAndValidate()
 }
 
 type RegisterResponse AuthDTOResponse
@@ -27,6 +32,8 @@ type RegisterResponse AuthDTOResponse
 // @Success      201 {object} RegisterResponse "Пользователь зарегистрирован"
 // @Failure      400 {object} core_http_response.ErrorResponse "Bad request"
 // @Failure      409 {object} core_http_response.ErrorResponse "Email already registered"
+// @Failure      413 {object} core_http_response.ErrorResponse "Payload too large"
+// @Failure      429 {object} core_http_response.ErrorResponse "Too many requests"
 // @Failure      500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router       /auth/register [post]
 func (h *AuthHTTPHandler) Register(rw http.ResponseWriter, r *http.Request) {
@@ -41,13 +48,13 @@ func (h *AuthHTTPHandler) Register(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userDomain := domain.NewUserUninitialized(
+	registration := domain.NewUserRegistration(
 		request.Name,
 		request.Email,
 		request.Password,
 	)
 
-	authentication, err := h.authService.Register(ctx, userDomain)
+	authentication, err := h.authService.Register(ctx, registration)
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to register user")
 

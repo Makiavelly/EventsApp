@@ -1,6 +1,7 @@
 package participants_transport_http
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
@@ -11,7 +12,15 @@ import (
 )
 
 type CreateParticipantRequest struct {
-	EventID int `json:"event_id" validate:"required"       example:"1"`
+	EventID int `json:"event_id" example:"1"`
+}
+
+func (r *CreateParticipantRequest) Validate() error {
+	if r.EventID <= 0 {
+		return fmt.Errorf("'event_id' must be positive")
+	}
+
+	return nil
 }
 
 type CreateParticipantResponse ParticipantDTOResponse
@@ -26,8 +35,10 @@ type CreateParticipantResponse ParticipantDTOResponse
 // @Param 				request body CreateParticipantRequest true "Create participant тело запроса"
 // @Success 			201 {object} CreateParticipantResponse "Успешно созданный участник события"
 // @Failure 			400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 			401 {object} core_http_response.ErrorResponse "Unauthorized"
 // @Failure 			404 {object} core_http_response.ErrorResponse "User not found"
 // @Failure 			409 {object} core_http_response.ErrorResponse "Conflict"
+// @Failure 			413 {object} core_http_response.ErrorResponse "Payload too large"
 // @Failure 			500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 				/participants [post]
 func (h *ParticipantsHTTPHandler) CreateParticipant(rw http.ResponseWriter, r *http.Request) {
@@ -47,7 +58,7 @@ func (h *ParticipantsHTTPHandler) CreateParticipant(rw http.ResponseWriter, r *h
 		return
 	}
 
-	participantDomain := domain.NewParticipantUninitialized(
+	participantDomain := domain.NewParticipant(
 		request.EventID,
 		participantID,
 	)

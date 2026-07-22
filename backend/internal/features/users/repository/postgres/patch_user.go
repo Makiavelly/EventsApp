@@ -10,7 +10,12 @@ import (
 	core_postgres_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool"
 )
 
-func (r *UsersRepository) PatchUser(ctx context.Context, id int, user domain.User) (domain.User, error) {
+func (r *UsersRepository) PatchUser(
+	ctx context.Context,
+	id int,
+	user domain.User,
+	passwordHash *string,
+) (domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
@@ -18,23 +23,21 @@ func (r *UsersRepository) PatchUser(ctx context.Context, id int, user domain.Use
 	UPDATE eventsapp.users
 	SET
 		name=$1,
-		password=$2
+		password=COALESCE($2::text, password)
 	WHERE id=$3
 	RETURNING 
 		id,
 		name,
-		email,
-		password;
+		email;
 	`
 
-	row := r.pool.QueryRow(ctx, query, user.Name, user.Password, id)
+	row := r.pool.QueryRow(ctx, query, user.Name, passwordHash, id)
 
 	var userModel UserModel
 	err := row.Scan(
 		&userModel.ID,
 		&userModel.Name,
 		&userModel.Email,
-		&userModel.Password,
 	)
 	if err != nil {
 		if errors.Is(err, core_postgres_pool.ErrNoRows) {
@@ -48,7 +51,6 @@ func (r *UsersRepository) PatchUser(ctx context.Context, id int, user domain.Use
 		userModel.ID,
 		userModel.Name,
 		userModel.Email,
-		userModel.Password,
 	)
 
 	return userDomain, nil

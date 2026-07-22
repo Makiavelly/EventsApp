@@ -8,10 +8,21 @@ import (
 
 type ParticipantsService struct {
 	participantsRepository ParticipantsRepository
+	eventsReader           EventsReader
 }
 
-func NewParticipantService(participantsRepositury ParticipantsRepository) *ParticipantsService {
-	return &ParticipantsService{participantsRepository: participantsRepositury}
+func NewParticipantService(
+	participantsRepository ParticipantsRepository,
+	eventsReader EventsReader,
+) *ParticipantsService {
+	return &ParticipantsService{
+		participantsRepository: participantsRepository,
+		eventsReader:           eventsReader,
+	}
+}
+
+type EventsReader interface {
+	GetEvent(ctx context.Context, id int) (domain.Event, error)
 }
 
 type ParticipantsRepository interface {
@@ -31,12 +42,5 @@ type ParticipantsRepository interface {
 		eventID *int,
 		limit *int,
 		offset *int,
-	) ([]domain.EventParticipants, error)
-
-	PatchParticipant(
-		ctx context.Context,
-		eventID int,
-		participantID int,
-		participant domain.Participant,
-	) (domain.Participant, error)
+	) ([]domain.EventParticipant, error)
 }

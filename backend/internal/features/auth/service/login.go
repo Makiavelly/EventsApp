@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
@@ -16,10 +15,7 @@ func (s *AuthService) Login(
 	email string,
 	password string,
 ) (domain.Authentication, error) {
-	user, err := s.usersService.GetUserByEmail(
-		ctx,
-		strings.ToLower(strings.TrimSpace(email)),
-	)
+	account, err := s.usersService.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, core_errors.ErrNotFound) {
 			return domain.Authentication{}, fmt.Errorf(
@@ -32,45 +28,19 @@ func (s *AuthService) Login(
 	}
 
 	if err := bcrypt.CompareHashAndPassword(
-		[]byte(user.Password),
+		[]byte(account.PasswordHash),
 		[]byte(password),
 	); err != nil {
-		user, err = s.upgradeLegacyPassword(ctx, user, password)
-		if err != nil {
-			return domain.Authentication{}, err
-		}
-	}
-
-	authentication, err := s.startSession(ctx, user)
-	if err != nil {
-		return domain.Authentication{}, fmt.Errorf("start authentication session: %w", err)
-	}
-
-	return authentication, nil
-}
-
-func (s *AuthService) upgradeLegacyPassword(
-	ctx context.Context,
-	user domain.User,
-	password string,
-) (domain.User, error) {
-	if user.Password != password {
-		return domain.User{}, fmt.Errorf(
+		return domain.Authentication{}, fmt.Errorf(
 			"incorrect email or password: %w",
 			core_errors.ErrUnauthorized,
 		)
 	}
 
-	passwordValue := password
-	patch := domain.NewUserPatch(
-		domain.Nullable[string]{},
-		domain.Nullable[string]{Value: &passwordValue, Set: true},
-	)
-
-	user, err := s.usersService.PatchUser(ctx, user.ID, patch)
+	authentication, err := s.startSession(ctx, account.User)
 	if err != nil {
-		return domain.User{}, fmt.Errorf("upgrade password hash: %w", err)
+		return domain.Authentication{}, fmt.Errorf("start authentication session: %w", err)
 	}
 
-	return user, nil
+	return authentication, nil
 }

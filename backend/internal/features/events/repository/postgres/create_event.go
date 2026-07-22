@@ -18,12 +18,15 @@ func (r *EventsRepository) CreateEvent(
 	defer cancel()
 
 	query := `
+	WITH inserted_event AS (
 	INSERT INTO eventsapp.events (
 		creator_id, 
 		title, 
 		description, 
 		location, 
-		date_meeting
+		date_meeting,
+		auto_delete_policy,
+		auto_delete_after_seconds
 	)
 	VALUES (
 		$1, 
@@ -33,7 +36,9 @@ func (r *EventsRepository) CreateEvent(
         	WHEN $4::double precision IS NULL OR $5::double precision IS NULL THEN NULL
         	ELSE ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography
     	END,
-		$6
+		$6,
+		$7,
+		$8
 	)
 	RETURNING 
 		id, 
@@ -42,7 +47,15 @@ func (r *EventsRepository) CreateEvent(
 		description, 
 		ST_Y(location::geometry) AS latitude,
     	ST_X(location::geometry) AS longitude,
-		date_meeting;
+		date_meeting,
+		auto_delete_policy,
+		auto_delete_after_seconds
+	), inserted_participant AS (
+		INSERT INTO eventsapp.participants_events (event_id, participant_id)
+		SELECT id, creator_id
+		FROM inserted_event
+	)
+	SELECT * FROM inserted_event;
 	`
 
 	var (
@@ -63,6 +76,8 @@ func (r *EventsRepository) CreateEvent(
 		longitude,
 		latitude,
 		event.DateMeeting,
+		event.AutoDeletePolicy,
+		event.AutoDeleteAfterSeconds,
 	)
 
 	var eventModel EventModel
@@ -75,6 +90,8 @@ func (r *EventsRepository) CreateEvent(
 		&eventModel.Latitude,
 		&eventModel.Longitude,
 		&eventModel.DateMeeting,
+		&eventModel.AutoDeletePolicy,
+		&eventModel.AutoDeleteAfterSeconds,
 	)
 	if err != nil {
 		if errors.Is(err, core_postgres_pool.ErrViolatesForeignKey) {
@@ -83,6 +100,12 @@ func (r *EventsRepository) CreateEvent(
 				err,
 				event.CreatorID,
 				core_errors.ErrNotFound,
+			)
+		}
+		if errors.Is(err, core_postgres_pool.ErrViolatesCheck) {
+			return domain.Event{}, fmt.Errorf(
+				"event violates database constraints: %w",
+				core_errors.ErrInvalidArgument,
 			)
 		}
 

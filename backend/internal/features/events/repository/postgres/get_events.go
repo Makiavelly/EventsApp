@@ -13,6 +13,9 @@ func (r *EventsRepository) GetEvents(
 	longitude *float64,
 	radius *int,
 	bounds *domain.EventBounds,
+	creatorID *int,
+	participantID *int,
+	withoutLocation bool,
 	limit *int,
 	offset *int,
 ) ([]domain.Event, error) {
@@ -27,12 +30,14 @@ func (r *EventsRepository) GetEvents(
 		description,
 		ST_Y(location::geometry) AS latitude,
 		ST_X(location::geometry) AS longitude,
-		date_meeting
-	FROM eventsapp.events
+		e.date_meeting,
+		e.auto_delete_policy,
+		e.auto_delete_after_seconds
+	FROM eventsapp.events e
 	WHERE (
 		$1::double precision IS NULL
     	OR ST_DWithin(
-        	location,
+			e.location,
         	ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
         	$3::double precision
     	)
@@ -40,13 +45,41 @@ func (r *EventsRepository) GetEvents(
 	AND (
 		$4::double precision IS NULL
 		OR ST_Intersects(
-			location,
+			e.location,
 			ST_MakeEnvelope($4, $5, $6, $7, 4326)::geography
 		)
 	)
-	ORDER BY id ASC
-	LIMIT $8
-	OFFSET $9;
+	AND ($8::bigint IS NULL OR e.creator_id = $8)
+	AND (
+		$9::bigint IS NULL
+		OR EXISTS (
+			SELECT 1
+			FROM eventsapp.participants_events pe
+			WHERE pe.event_id = e.id AND pe.participant_id = $9
+		)
+	)
+	AND (NOT $10::boolean OR e.location IS NULL)
+	AND NOT (
+		e.date_meeting IS NOT NULL
+		AND (
+			(e.auto_delete_policy = 'at_start' AND e.date_meeting <= CURRENT_TIMESTAMP)
+			OR (
+				e.auto_delete_policy = 'after_interval'
+				AND e.date_meeting + make_interval(secs => e.auto_delete_after_seconds) <= CURRENT_TIMESTAMP
+			)
+		)
+	)
+	ORDER BY
+		CASE
+			WHEN $1::double precision IS NULL OR e.location IS NULL THEN NULL
+			ELSE ST_Distance(
+				e.location,
+				ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
+			)
+		END ASC NULLS LAST,
+		e.id ASC
+	LIMIT $11
+	OFFSET $12;
 	`
 
 	var west, south, east, north *float64
@@ -67,6 +100,9 @@ func (r *EventsRepository) GetEvents(
 		south,
 		east,
 		north,
+		creatorID,
+		participantID,
+		withoutLocation,
 		limit,
 		offset,
 	)
@@ -88,6 +124,8 @@ func (r *EventsRepository) GetEvents(
 			&eventModel.Latitude,
 			&eventModel.Longitude,
 			&eventModel.DateMeeting,
+			&eventModel.AutoDeletePolicy,
+			&eventModel.AutoDeleteAfterSeconds,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan events: %w", err)

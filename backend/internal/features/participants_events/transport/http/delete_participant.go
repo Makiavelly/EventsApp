@@ -19,6 +19,8 @@ import (
 // @Security 	BearerAuth
 // @Success 	204 "Участник события успешно удален"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
+// @Failure 	401 {object} core_http_response.ErrorResponse "Unauthorized"
+// @Failure 	403 {object} core_http_response.ErrorResponse "Event creator cannot leave"
 // @Failure 	404 {object} core_http_response.ErrorResponse "Participant not found"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/participants [delete]
@@ -50,7 +52,7 @@ func (h *ParticipantsHTTPHandler) DeleteParticipant(rw http.ResponseWriter, r *h
 }
 
 func getEventIDParam(r *http.Request) (int, error) {
-	eventID, err := core_http_request.GetIntQueryParam(r, "event_id")
+	eventID, err := core_http_request.GetPositiveIntQueryParam(r, "event_id")
 	if err != nil {
 		return 0, fmt.Errorf("get 'event_id' query param: %w", err)
 	}

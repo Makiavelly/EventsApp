@@ -6,17 +6,20 @@ import (
 
 	core_auth "github.com/Makiavelly/EventsApp/internal/core/auth"
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
+	core_postgres_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool"
 )
 
 type UsersService interface {
-	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
+	CreateUser(
+		ctx context.Context,
+		registration domain.UserRegistration,
+	) (domain.User, error)
 	GetUser(ctx context.Context, id int) (domain.User, error)
-	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
-	PatchUser(ctx context.Context, id int, patch domain.UserPatch) (domain.User, error)
+	GetUserByEmail(ctx context.Context, email string) (domain.UserAccount, error)
 }
 
 type TokenIssuer interface {
-	Issue(userID int) (string, error)
+	Issue(userID int, sessionID string) (string, error)
 }
 
 type RefreshTokenManager interface {
@@ -33,6 +36,8 @@ type AuthRepository interface {
 		newTokenHash []byte,
 	) (int, time.Time, error)
 	RevokeSession(ctx context.Context, sessionID string, tokenHash []byte) error
+	ValidateSession(ctx context.Context, sessionID string, userID int) error
+	CleanupSessions(ctx context.Context) error
 }
 
 type AuthService struct {
@@ -41,6 +46,7 @@ type AuthService struct {
 	accessTokenIssuer   TokenIssuer
 	refreshTokenManager RefreshTokenManager
 	refreshTokenTTL     time.Duration
+	transactionManager  core_postgres_pool.TransactionManager
 }
 
 func NewAuthService(
@@ -49,6 +55,7 @@ func NewAuthService(
 	accessTokenIssuer TokenIssuer,
 	refreshTokenManager RefreshTokenManager,
 	refreshTokenTTL time.Duration,
+	transactionManager core_postgres_pool.TransactionManager,
 ) *AuthService {
 	return &AuthService{
 		usersService:        usersService,
@@ -56,5 +63,6 @@ func NewAuthService(
 		accessTokenIssuer:   accessTokenIssuer,
 		refreshTokenManager: refreshTokenManager,
 		refreshTokenTTL:     refreshTokenTTL,
+		transactionManager:  transactionManager,
 	}
 }

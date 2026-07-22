@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Makiavelly/EventsApp/internal/core/domain"
 	core_errors "github.com/Makiavelly/EventsApp/internal/core/errors"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
 	core_http_response "github.com/Makiavelly/EventsApp/internal/core/transport/http/response"
@@ -14,10 +15,14 @@ import (
 type userIDContextKey struct{}
 
 type TokenVerifier interface {
-	Verify(token string) (int, error)
+	Verify(token string) (domain.AuthenticatedUser, error)
 }
 
-func Authenticate(verifier TokenVerifier) Middleware {
+type SessionVerifier interface {
+	ValidateSession(ctx context.Context, sessionID string, userID int) error
+}
+
+func Authenticate(verifier TokenVerifier, sessions SessionVerifier) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -27,13 +32,25 @@ func Authenticate(verifier TokenVerifier) Middleware {
 				return
 			}
 
-			userID, err := verifier.Verify(strings.TrimSpace(parts[1]))
+			identity, err := verifier.Verify(strings.TrimSpace(parts[1]))
 			if err != nil {
 				unauthorized(w, r, err)
 				return
 			}
+			if err := sessions.ValidateSession(
+				r.Context(),
+				identity.SessionID,
+				identity.UserID,
+			); err != nil {
+				unauthorized(w, r, err)
+				return
+			}
 
-			ctx := context.WithValue(r.Context(), userIDContextKey{}, userID)
+			ctx := context.WithValue(
+				r.Context(),
+				userIDContextKey{},
+				identity.UserID,
+			)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

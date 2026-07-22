@@ -25,12 +25,12 @@ export function Input({ label, hint, error, className, id, ...props }: InputProp
   const inputId = id ?? props.name;
 
   return (
-    <label className="grid gap-2 text-sm font-medium text-ink" htmlFor={inputId}>
+    <label className="grid gap-2 text-sm font-bold text-ink" htmlFor={inputId}>
       {label}
       <input
         id={inputId}
         className={clsx(
-          "focus-ring min-h-11 w-full rounded-lg border border-ink/12 bg-white px-3 text-sm text-ink placeholder:text-ink/35",
+          "focus-ring min-h-12 w-full rounded-2xl border border-line bg-surface px-4 text-base text-ink placeholder:text-ink/35",
           error && "border-clay",
           className,
         )}
@@ -45,12 +45,12 @@ export function Textarea({ label, hint, error, className, id, ...props }: Textar
   const textareaId = id ?? props.name;
 
   return (
-    <label className="grid gap-2 text-sm font-medium text-ink" htmlFor={textareaId}>
+    <label className="grid gap-2 text-sm font-bold text-ink" htmlFor={textareaId}>
       {label}
       <textarea
         id={textareaId}
         className={clsx(
-          "focus-ring min-h-28 w-full resize-y rounded-lg border border-ink/12 bg-white px-3 py-3 text-sm text-ink placeholder:text-ink/35",
+          "focus-ring min-h-32 w-full resize-y rounded-2xl border border-line bg-surface px-4 py-3 text-base text-ink placeholder:text-ink/35",
           error && "border-clay",
           className,
         )}

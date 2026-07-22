@@ -58,6 +58,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "413": {
+                        "description": "Payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -153,6 +165,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "429": {
+                        "description": "Too many requests",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -201,6 +219,18 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Email already registered",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -269,6 +299,24 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "ID создателя",
+                        "name": "creator_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID участника",
+                        "name": "participant_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Только события без координат",
+                        "name": "without_location",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "Лимит событий",
                         "name": "limit",
                         "in": "query"
@@ -286,21 +334,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/internal_features_events_transport_http.EventDTOResponse"
-                                }
+                                "$ref": "#/definitions/internal_features_events_transport_http.EventDTOResponse"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Event not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -354,8 +393,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Payload too large",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -445,6 +496,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Event not found",
                         "schema": {
@@ -507,8 +570,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Payload too large",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -558,21 +639,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/internal_features_participants_events_transport_http.EventParticipantsDTOResponse"
-                                }
+                                "$ref": "#/definitions/internal_features_participants_events_transport_http.EventParticipantDTOResponse"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Participants not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -626,6 +698,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "User not found",
                         "schema": {
@@ -634,6 +712,12 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Payload too large",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -676,64 +760,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Participant not found",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновить статус участника события",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "participants_events"
-                ],
-                "summary": "Обновить участника события",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID события",
-                        "name": "event_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "Patch participant тело запроса",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_features_participants_events_transport_http.PatchParticipantRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешно обновленный участник события",
-                        "schema": {
-                            "$ref": "#/definitions/internal_features_participants_events_transport_http.PatchParticipantResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
+                    "403": {
+                        "description": "Event creator cannot leave",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -783,21 +817,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/internal_features_users_transport_http.UserDTOResponse"
-                                }
+                                "$ref": "#/definitions/internal_features_users_transport_http.UserDTOResponse"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "User not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -858,6 +883,11 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Удалить пользователя по ID",
                 "tags": [
                     "users"
@@ -882,6 +912,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "User not found",
                         "schema": {
@@ -897,6 +939,11 @@ const docTemplate = `{
                 }
             },
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Частично обновить пользователя по ID\n###Логика обновления полей (Three-state logic):\n1. **Поле не передано**: ` + "`" + `name` + "`" + ` игнорируется, значение в БД не меняется\n2. **Явно передано значение**: ` + "`" + `\"name\":\"Alex\"` + "`" + ` - устанавливает новое имя в БД",
                 "consumes": [
                     "application/json"
@@ -939,8 +986,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Payload too large",
                         "schema": {
                             "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse"
                         }
@@ -956,6 +1021,19 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy": {
+            "type": "string",
+            "enum": [
+                "at_start",
+                "after_interval",
+                "never"
+            ],
+            "x-enum-varnames": [
+                "EventAutoDeleteAtStart",
+                "EventAutoDeleteAfterInterval",
+                "EventAutoDeleteNever"
+            ]
+        },
         "github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -1018,21 +1096,13 @@ const docTemplate = `{
         },
         "internal_features_auth_transport_http.LoginRequest": {
             "type": "object",
-            "required": [
-                "email",
-                "password"
-            ],
             "properties": {
                 "email": {
                     "type": "string",
-                    "maxLength": 100,
-                    "minLength": 9,
                     "example": "alex@mail.ru"
                 },
                 "password": {
                     "type": "string",
-                    "maxLength": 72,
-                    "minLength": 6,
                     "example": "alexpswd"
                 }
             }
@@ -1061,28 +1131,17 @@ const docTemplate = `{
         },
         "internal_features_auth_transport_http.RegisterRequest": {
             "type": "object",
-            "required": [
-                "email",
-                "name",
-                "password"
-            ],
             "properties": {
                 "email": {
                     "type": "string",
-                    "maxLength": 100,
-                    "minLength": 9,
                     "example": "alex@mail.ru"
                 },
                 "name": {
                     "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1,
                     "example": "Alex"
                 },
                 "password": {
                     "type": "string",
-                    "maxLength": 72,
-                    "minLength": 6,
                     "example": "alexpswd"
                 }
             }
@@ -1100,27 +1159,32 @@ const docTemplate = `{
         },
         "internal_features_events_transport_http.CreateEventRequest": {
             "type": "object",
-            "required": [
-                "title"
-            ],
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "date_meeting": {
                     "type": "string",
                     "example": "2026-08-10T18:00:00Z"
                 },
                 "description": {
                     "type": "string",
-                    "maxLength": 300,
-                    "minLength": 1,
-                    "example": "Go to footbal"
+                    "example": "Go to football"
                 },
                 "location": {
                     "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
                 },
                 "title": {
                     "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1,
                     "example": "Sport"
                 }
             }
@@ -1128,13 +1192,25 @@ const docTemplate = `{
         "internal_features_events_transport_http.CreateEventResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "date_meeting": {
                     "type": "string",
-                    "example": "2026-07-01T13-52-14.752729"
+                    "example": "2026-08-01T13:52:14Z"
                 },
                 "description": {
                     "type": "string",
@@ -1149,20 +1225,32 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string",
-                    "example": "Sprot"
+                    "example": "Sport meetup"
                 }
             }
         },
         "internal_features_events_transport_http.EventDTOResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "date_meeting": {
                     "type": "string",
-                    "example": "2026-07-01T13-52-14.752729"
+                    "example": "2026-08-01T13:52:14Z"
                 },
                 "description": {
                     "type": "string",
@@ -1177,20 +1265,32 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string",
-                    "example": "Sprot"
+                    "example": "Sport meetup"
                 }
             }
         },
         "internal_features_events_transport_http.GetEventResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "date_meeting": {
                     "type": "string",
-                    "example": "2026-07-01T13-52-14.752729"
+                    "example": "2026-08-01T13:52:14Z"
                 },
                 "description": {
                     "type": "string",
@@ -1205,13 +1305,21 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string",
-                    "example": "Sprot"
+                    "example": "Sport meetup"
                 }
             }
         },
         "internal_features_events_transport_http.PatchEventRequest": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "type": "string",
+                    "example": "never"
+                },
                 "date_meeting": {
                     "type": "string",
                     "format": "date-time",
@@ -1233,13 +1341,25 @@ const docTemplate = `{
         "internal_features_events_transport_http.PatchEventResponse": {
             "type": "object",
             "properties": {
+                "auto_delete_after_seconds": {
+                    "type": "integer",
+                    "example": 7200
+                },
+                "auto_delete_policy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventAutoDeletePolicy"
+                        }
+                    ],
+                    "example": "never"
+                },
                 "creator_user_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "date_meeting": {
                     "type": "string",
-                    "example": "2026-07-01T13-52-14.752729"
+                    "example": "2026-08-01T13:52:14Z"
                 },
                 "description": {
                     "type": "string",
@@ -1254,15 +1374,12 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string",
-                    "example": "Sprot"
+                    "example": "Sport meetup"
                 }
             }
         },
         "internal_features_participants_events_transport_http.CreateParticipantRequest": {
             "type": "object",
-            "required": [
-                "event_id"
-            ],
             "properties": {
                 "event_id": {
                     "type": "integer",
@@ -1280,81 +1397,29 @@ const docTemplate = `{
                 "participant_id": {
                     "type": "integer",
                     "example": 1
-                },
-                "status": {
-                    "type": "string",
-                    "example": "planned"
                 }
             }
         },
-        "internal_features_participants_events_transport_http.EventParticipantsDTOResponse": {
+        "internal_features_participants_events_transport_http.EventParticipantDTOResponse": {
             "type": "object",
             "properties": {
                 "event_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_features_participants_events_transport_http.UserDTOResponse"
-                    }
-                }
-            }
-        },
-        "internal_features_participants_events_transport_http.PatchParticipantRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "example": "over"
-                }
-            }
-        },
-        "internal_features_participants_events_transport_http.PatchParticipantResponse": {
-            "type": "object",
-            "properties": {
-                "event_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "participant_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "status": {
-                    "type": "string",
-                    "example": "planned"
-                }
-            }
-        },
-        "internal_features_participants_events_transport_http.UserDTOResponse": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "alex@mail.ru"
-                },
-                "id": {
                     "type": "integer",
                     "example": 1
                 },
                 "name": {
                     "type": "string",
                     "example": "Alex"
+                },
+                "participant_id": {
+                    "type": "integer",
+                    "example": 2
                 }
             }
         },
         "internal_features_users_transport_http.GetUserResponse": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "alex@mail.ru"
-                },
                 "id": {
                     "type": "integer",
                     "example": 1
@@ -1398,10 +1463,6 @@ const docTemplate = `{
         "internal_features_users_transport_http.UserDTOResponse": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "alex@mail.ru"
-                },
                 "id": {
                     "type": "integer",
                     "example": 1
@@ -1425,7 +1486,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "172.20.247.149:5050",
+	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "GoLang EventsApp API",

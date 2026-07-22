@@ -72,6 +72,18 @@ func (h *HTTPResponseHandler) ErrorResponse(err error, msg string) {
 		statusCode = http.StatusForbidden
 		logFunc = h.log.Warn
 
+	case errors.Is(err, core_errors.ErrPayloadTooLarge):
+		statusCode = http.StatusRequestEntityTooLarge
+		logFunc = h.log.Warn
+
+	case errors.Is(err, core_errors.ErrTooManyRequests):
+		statusCode = http.StatusTooManyRequests
+		logFunc = h.log.Warn
+
+	case errors.Is(err, core_errors.ErrUnavailable):
+		statusCode = http.StatusServiceUnavailable
+		logFunc = h.log.Error
+
 	default:
 		statusCode = http.StatusInternalServerError
 		logFunc = h.log.Error
@@ -98,11 +110,6 @@ func (h *HTTPResponseHandler) errorResponse(statusCode int, errorText string, ms
 	h.JSONResponse(response, statusCode)
 }
 
-func publicError(statusCode int, err error) string {
-	switch statusCode {
-	case http.StatusUnauthorized, http.StatusForbidden, http.StatusInternalServerError:
-		return http.StatusText(statusCode)
-	default:
-		return err.Error()
-	}
+func publicError(statusCode int, _ error) string {
+	return http.StatusText(statusCode)
 }

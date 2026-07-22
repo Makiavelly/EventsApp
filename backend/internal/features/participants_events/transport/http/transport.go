@@ -36,14 +36,7 @@ type ParticipantsService interface {
 		eventID *int,
 		limit *int,
 		offset *int,
-	) ([]domain.EventParticipants, error)
-
-	PatchParticipant(
-		ctx context.Context,
-		eventID int,
-		participantID int,
-		participant domain.Participant,
-	) (domain.Participant, error)
+	) ([]domain.EventParticipant, error)
 }
 
 func (h *ParticipantsHTTPHandler) Routes(auth core_http_middleware.Middleware) []core_http_server.Route {
@@ -63,12 +56,6 @@ func (h *ParticipantsHTTPHandler) Routes(auth core_http_middleware.Middleware) [
 			Method:     http.MethodDelete,
 			Path:       "/participants",
 			Handler:    h.DeleteParticipant,
-			Middleware: []core_http_middleware.Middleware{auth},
-		},
-		{
-			Method:     http.MethodPatch,
-			Path:       "/participants",
-			Handler:    h.PatchParticipant,
 			Middleware: []core_http_middleware.Middleware{auth},
 		},
 	}

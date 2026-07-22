@@ -21,15 +21,22 @@ func (s *UsersService) PatchUser(
 	if err := user.ApplyPatch(patch); err != nil {
 		return domain.User{}, fmt.Errorf("apply user patch: %w", err)
 	}
+
+	var passwordHash *string
 	if patch.Password.Set {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword(
+			[]byte(*patch.Password.Value),
+			bcrypt.DefaultCost,
+		)
 		if err != nil {
 			return domain.User{}, fmt.Errorf("hash password: %w", err)
 		}
-		user.Password = string(hashedPassword)
+
+		hash := string(hashedPassword)
+		passwordHash = &hash
 	}
 
-	patchedUser, err := s.usersRepository.PatchUser(ctx, id, user)
+	patchedUser, err := s.usersRepository.PatchUser(ctx, id, user, passwordHash)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("patch user: %w", err)
 	}

@@ -12,7 +12,7 @@ import (
 type AuthService interface {
 	Register(
 		ctx context.Context,
-		user domain.User,
+		registration domain.UserRegistration,
 	) (domain.Authentication, error)
 
 	Login(
@@ -52,22 +52,28 @@ func NewAuthHTTPHandler(
 	}
 }
 
-func (h *AuthHTTPHandler) Routes(auth core_http_middleware.Middleware) []core_http_server.Route {
+func (h *AuthHTTPHandler) Routes(
+	auth core_http_middleware.Middleware,
+	rateLimit core_http_middleware.Middleware,
+) []core_http_server.Route {
 	return []core_http_server.Route{
 		{
-			Method:  http.MethodPost,
-			Path:    "/auth/register",
-			Handler: h.Register,
+			Method:     http.MethodPost,
+			Path:       "/auth/register",
+			Handler:    h.Register,
+			Middleware: []core_http_middleware.Middleware{rateLimit},
 		},
 		{
-			Method:  http.MethodPost,
-			Path:    "/auth/login",
-			Handler: h.Login,
+			Method:     http.MethodPost,
+			Path:       "/auth/login",
+			Handler:    h.Login,
+			Middleware: []core_http_middleware.Middleware{rateLimit},
 		},
 		{
-			Method:  http.MethodPost,
-			Path:    "/auth/refresh",
-			Handler: h.Refresh,
+			Method:     http.MethodPost,
+			Path:       "/auth/refresh",
+			Handler:    h.Refresh,
+			Middleware: []core_http_middleware.Middleware{rateLimit},
 		},
 		{
 			Method:     http.MethodGet,

@@ -15,10 +15,10 @@ export function Modal({ open, title, children, onClose }: ModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 px-4 py-6" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-panel">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="w-full max-w-md rounded-app border border-line bg-surface p-5 shadow-float">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-ink">{title}</h2>
+          <h2 id="modal-title" className="text-lg font-bold text-ink">{title}</h2>
           <Button variant="ghost" className="h-9 w-9 px-0" onClick={onClose} aria-label="Закрыть">
             <X size={18} />
           </Button>

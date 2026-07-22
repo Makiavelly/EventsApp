@@ -11,6 +11,7 @@ import (
 	core_auth "github.com/Makiavelly/EventsApp/internal/core/auth"
 	core_config "github.com/Makiavelly/EventsApp/internal/core/config"
 	core_logger "github.com/Makiavelly/EventsApp/internal/core/logger"
+	core_metrics "github.com/Makiavelly/EventsApp/internal/core/metrics"
 	core_pgx_pool "github.com/Makiavelly/EventsApp/internal/core/repository/postgres/pool/pgx"
 	core_http_middleware "github.com/Makiavelly/EventsApp/internal/core/transport/http/middleware"
 	core_http_server "github.com/Makiavelly/EventsApp/internal/core/transport/http/server"
@@ -20,6 +21,8 @@ import (
 	events_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/events/repository/postgres"
 	events_service "github.com/Makiavelly/EventsApp/internal/features/events/service"
 	events_transport_http "github.com/Makiavelly/EventsApp/internal/features/events/transport/http"
+	health_service "github.com/Makiavelly/EventsApp/internal/features/health/service"
+	health_transport_http "github.com/Makiavelly/EventsApp/internal/features/health/transport/http"
 	participants_postgres_repository "github.com/Makiavelly/EventsApp/internal/features/participants_events/repository/postgres"
 	participants_service "github.com/Makiavelly/EventsApp/internal/features/participants_events/service"
 	participants_transport_http "github.com/Makiavelly/EventsApp/internal/features/participants_events/transport/http"
@@ -37,7 +40,6 @@ import (
 // @title 		GoLang EventsApp API
 // @version 	1.0
 // @description Events Application REST-API scheme
-// @host 		172.20.247.149:5050
 // @BasePath 	/api/v1
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -78,33 +80,50 @@ func main() {
 	accessTokenManager := core_auth.NewAccessTokenManager(authConfig)
 	refreshTokenManager := core_auth.NewRefreshTokenManager()
 	authRepository := auth_postgres_repository.NewAuthRepository(pool)
-	authMiddleware := core_http_middleware.Authenticate(accessTokenManager)
 	authService := auth_service.NewAuthService(
 		usersService,
 		authRepository,
 		accessTokenManager,
 		refreshTokenManager,
 		authConfig.RefreshTokenTTL,
+		pool,
 	)
+	authMiddleware := core_http_middleware.Authenticate(accessTokenManager, authService)
 	authTransportHTTP := auth_transport_http.NewAuthHTTPHandler(
 		authService,
 		auth_transport_http.NewCookieConfigMust(),
 	)
+	rateLimitConfig := auth_transport_http.NewRateLimitConfigMust()
+	authRateLimiter := core_http_middleware.NewRateLimiter(
+		rateLimitConfig.Requests,
+		rateLimitConfig.Window,
+		rateLimitConfig.TrustProxy,
+	)
+	go runAuthSessionCleanup(ctx, authService, logger)
 
 	logger.Debug("initializing feature", zap.String("feature", "events"))
 	eventsRepository := events_postgres_repository.NewEventsRepository(pool)
 	eventsService := events_service.NewEventsService(eventsRepository)
 	eventsTransportHTTP := events_transport_http.NewEventsHTTPHandler(eventsService)
+	go runExpiredEventCleanup(ctx, eventsService, logger)
 
 	logger.Debug("initializing feature", zap.String("feature", "participants_events"))
 	participantsRepository := participants_postgres_repository.NewParticipantsRepository(pool)
-	participantsService := participants_service.NewParticipantService(participantsRepository)
+	participantsService := participants_service.NewParticipantService(participantsRepository, eventsService)
 	participantsTransportHTTP := participants_transport_http.NewParticipantsHTTPHandler(participantsService)
 
 	logger.Debug("initializing feature", zap.String("feature", "web"))
 	webRepository := web_fs_repository.NewWebRepository()
 	webService := web_service.NewWebService(webRepository)
 	webTransportHTTP := web_transport_http.NewWebHTTPHandler(webService)
+
+	logger.Debug("initializing feature", zap.String("feature", "health"))
+	metrics := core_metrics.NewMetrics()
+	healthService := health_service.NewHealthService(pool)
+	healthTransportHTTP := health_transport_http.NewHealthHTTPHandler(
+		healthService,
+		metrics,
+	)
 
 	logger.Debug("initializing HTTP server")
 	httpServer := core_http_server.NewHTTPServer(
@@ -113,12 +132,15 @@ func main() {
 		core_http_middleware.CORS(),
 		core_http_middleware.RequestID(),
 		core_http_middleware.Logger(logger),
+		core_http_middleware.Metrics(metrics),
 		core_http_middleware.Trace(),
 		core_http_middleware.Panic(),
 	)
 	apiVersionRouter := core_http_server.NewAPIVersionRouter(core_http_server.ApiVersion1)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes(authMiddleware)...)
-	apiVersionRouter.RegisterRoutes(authTransportHTTP.Routes(authMiddleware)...)
+	apiVersionRouter.RegisterRoutes(
+		authTransportHTTP.Routes(authMiddleware, authRateLimiter.Middleware())...,
+	)
 	apiVersionRouter.RegisterRoutes(eventsTransportHTTP.Routes(authMiddleware)...)
 	apiVersionRouter.RegisterRoutes(participantsTransportHTTP.Routes(authMiddleware)...)
 
@@ -126,9 +148,79 @@ func main() {
 		apiVersionRouter,
 	)
 	httpServer.RegisterRoutes(webTransportHTTP.Routes()...)
+	httpServer.RegisterRoutes(healthTransportHTTP.Routes()...)
 	httpServer.RegisterSwagger()
 
 	if err := httpServer.Run(ctx); err != nil {
 		logger.Error("HTTP server run error", zap.Error(err))
+	}
+}
+
+type expiredEventCleaner interface {
+	CleanupExpiredEvents(ctx context.Context) (int64, error)
+}
+
+func runExpiredEventCleanup(
+	ctx context.Context,
+	cleaner expiredEventCleaner,
+	logger *core_logger.Logger,
+) {
+	const interval = time.Minute
+
+	cleanup := func() {
+		deleted, err := cleaner.CleanupExpiredEvents(ctx)
+		if err != nil {
+			logger.Error("failed to cleanup expired events", zap.Error(err))
+			return
+		}
+		if deleted > 0 {
+			logger.Info("expired events deleted", zap.Int64("count", deleted))
+		}
+	}
+
+	cleanup()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cleanup()
+		}
+	}
+}
+
+type authSessionCleaner interface {
+	CleanupSessions(ctx context.Context) error
+}
+
+func runAuthSessionCleanup(
+	ctx context.Context,
+	cleaner authSessionCleaner,
+	logger *core_logger.Logger,
+) {
+	const interval = 24 * time.Hour
+
+	cleanup := func() {
+		if err := cleaner.CleanupSessions(ctx); err != nil {
+			logger.Error("failed to cleanup authentication sessions", zap.Error(err))
+		}
+	}
+
+	cleanup()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cleanup()
+		}
 	}
 }

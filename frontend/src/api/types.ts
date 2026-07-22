@@ -15,13 +15,28 @@ export type Event = {
   description?: string | null;
   location?: Location | null;
   date_meeting?: string | null;
+  auto_delete_policy: AutoDeletePolicy;
+  auto_delete_after_seconds?: number | null;
 };
+
+export type AutoDeletePolicy = "at_start" | "after_interval" | "never";
 
 export type CreateEventPayload = {
   title: string;
   description?: string;
   location?: Location;
   date_meeting?: string;
+  auto_delete_policy: AutoDeletePolicy;
+  auto_delete_after_seconds?: number;
+};
+
+export type PatchEventPayload = {
+  title?: string;
+  description?: string | null;
+  location?: Location | null;
+  date_meeting?: string | null;
+  auto_delete_policy?: AutoDeletePolicy;
+  auto_delete_after_seconds?: number | null;
 };
 
 export type EventBounds = {
@@ -38,6 +53,9 @@ export type EventsFilters = {
   bounds?: EventBounds;
   limit?: number;
   offset?: number;
+  creatorId?: number;
+  participantId?: number;
+  withoutLocation?: boolean;
 };
 
 export type User = {
@@ -45,6 +63,8 @@ export type User = {
   name: string;
   email: string;
 };
+
+export type PublicUser = Pick<User, "id" | "name">;
 
 export type CreateUserPayload = {
   name: string;
@@ -62,13 +82,17 @@ export type AuthResponse = {
   user: User;
 };
 
-export type ParticipantUser = User;
-
-export type EventParticipants = {
+export type EventParticipant = {
   event_id: number;
-  users: ParticipantUser[];
+  participant_id: number;
+  name: string;
 };
 
 export type CreateParticipantPayload = {
   event_id: number;
+};
+
+export type PatchUserPayload = {
+  name?: string;
+  password?: string;
 };

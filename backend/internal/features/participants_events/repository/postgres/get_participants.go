@@ -12,7 +12,7 @@ func (r *ParticipantsRepository) GetParticipants(
 	eventID *int,
 	limit *int,
 	offset *int,
-) ([]domain.EventParticipants, error) {
+) ([]domain.EventParticipant, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
@@ -20,77 +20,37 @@ func (r *ParticipantsRepository) GetParticipants(
 	SELECT
 		pe.event_id,
 		u.id,
-		u.name,
-		u.email,
-		u.password
-	FROM eventsapp.users u
-	JOIN eventsapp.participants_events pe ON pe.participant_id = u.id
-	%s
+		u.name
+	FROM eventsapp.participants_events pe
+	JOIN eventsapp.users u ON u.id = pe.participant_id
+	WHERE ($1::bigint IS NULL OR pe.event_id = $1)
 	ORDER BY pe.event_id, u.id
-	LIMIT $1
-	OFFSET $2;
+	LIMIT $2
+	OFFSET $3;
 	`
 
-	args := []any{queryParamArg(limit), queryParamArg(offset)}
-
-	if eventID != nil {
-		query = fmt.Sprintf(query, "WHERE pe.event_id = $3")
-		args = append(args, *eventID)
-	} else {
-		query = fmt.Sprintf(query, "")
-	}
-
-	rows, err := r.pool.Query(ctx, query, args...)
+	rows, err := r.pool.Query(ctx, query, eventID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("select participants: %w", err)
 	}
 	defer rows.Close()
 
-	participantsByEventID := make(map[int][]domain.User)
-	eventIDs := make([]int, 0)
-
+	participants := make([]domain.EventParticipant, 0)
 	for rows.Next() {
-		var participantModel EventParticipantUserModel
-
-		err := rows.Scan(
-			&participantModel.EventID,
-			&participantModel.User.ID,
-			&participantModel.User.Name,
-			&participantModel.User.Email,
-			&participantModel.User.Password,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("scan participants: %w", err)
+		var model EventParticipantModel
+		if err := rows.Scan(
+			&model.EventID,
+			&model.ParticipantID,
+			&model.Name,
+		); err != nil {
+			return nil, fmt.Errorf("scan participant: %w", err)
 		}
 
-		if _, ok := participantsByEventID[participantModel.EventID]; !ok {
-			eventIDs = append(eventIDs, participantModel.EventID)
-		}
-
-		participantsByEventID[participantModel.EventID] = append(
-			participantsByEventID[participantModel.EventID],
-			userDomainFromModel(participantModel.User),
-		)
+		participants = append(participants, eventParticipantDomainFromModel(model))
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("next participants: %w", err)
+		return nil, fmt.Errorf("iterate participants: %w", err)
 	}
 
-	eventParticipants := make([]domain.EventParticipants, 0, len(eventIDs))
-	for _, eventID := range eventIDs {
-		eventParticipants = append(eventParticipants, domain.EventParticipants{
-			EventID: eventID,
-			Users:   participantsByEventID[eventID],
-		})
-	}
-
-	return eventParticipants, nil
-}
-
-func queryParamArg(param *int) any {
-	if param == nil {
-		return nil
-	}
-
-	return *param
+	return participants, nil
 }

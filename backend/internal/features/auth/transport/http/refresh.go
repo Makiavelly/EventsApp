@@ -18,6 +18,7 @@ type RefreshResponse AuthDTOResponse
 // @Produce      json
 // @Success      200 {object} RefreshResponse "Токены обновлены"
 // @Failure      401 {object} core_http_response.ErrorResponse "Unauthorized"
+// @Failure      429 {object} core_http_response.ErrorResponse "Too many requests"
 // @Failure      500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router       /auth/refresh [post]
 func (h *AuthHTTPHandler) Refresh(rw http.ResponseWriter, r *http.Request) {

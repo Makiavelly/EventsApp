@@ -1,60 +1,113 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+    container_name: eventsapp-frontend
+    depends_on:
+      eventsapp:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
   eventsapp:
     build:
       context: ./backend
       dockerfile: cmd/eventsapp/Dockerfile
     container_name: eventsapp
+    depends_on:
+      eventsapp-postgres:
+        condition: service_healthy
+      eventsapp-postgres-migrate:
+        condition: service_completed_successfully
     environment:
-      - HTTP_ADDR=:5050
-      - HTTP_SHUTDOWN_TIMEOUT=${HTTP_SHUTDOWN_TIMEOUT}
-      - HTTP_ALLOWED_ORIGINS=${HTTP_ALLOWED_ORIGINS}
-      - POSTGRES_HOST=eventsapp-postgres
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
-      - LOGGER_LEVEL=${LOGGER_LEVEL}
-      - TIME_ZONE=${TIME_ZONE}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_ACCESS_TOKEN_TTL=${AUTH_ACCESS_TOKEN_TTL}
-      - AUTH_REFRESH_TOKEN_TTL=${AUTH_REFRESH_TOKEN_TTL:-720h}
-      - AUTH_TOKEN_ISSUER=${AUTH_TOKEN_ISSUER:-eventsapp}
-      - AUTH_TOKEN_AUDIENCE=${AUTH_TOKEN_AUDIENCE:-eventsapp-web}
-      - AUTH_REFRESH_COOKIE_NAME=${AUTH_REFRESH_COOKIE_NAME:-eventsapp_refresh}
-      - AUTH_REFRESH_COOKIE_DOMAIN=${AUTH_REFRESH_COOKIE_DOMAIN}
-      - AUTH_REFRESH_COOKIE_SECURE=${AUTH_REFRESH_COOKIE_SECURE:-false}
-      - AUTH_REFRESH_COOKIE_SAME_SITE=${AUTH_REFRESH_COOKIE_SAME_SITE:-strict}
-      - LOGGER_FOLDER=/app/out/logs
+      HTTP_ADDR: :5050
+      HTTP_SHUTDOWN_TIMEOUT: ${HTTP_SHUTDOWN_TIMEOUT:-30s}
+      HTTP_READ_HEADER_TIMEOUT: ${HTTP_READ_HEADER_TIMEOUT:-5s}
+      HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT:-15s}
+      HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT:-30s}
+      HTTP_IDLE_TIMEOUT: ${HTTP_IDLE_TIMEOUT:-60s}
+      HTTP_ALLOWED_ORIGINS: ${HTTP_ALLOWED_ORIGINS:-http://localhost:8080}
+      POSTGRES_HOST: eventsapp-postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_TIMEOUT: ${POSTGRES_TIMEOUT:-10s}
+      POSTGRES_SSL_MODE: ${POSTGRES_SSL_MODE:-disable}
+      POSTGRES_SSL_ROOT_CERT: ${POSTGRES_SSL_ROOT_CERT:-}
+      LOGGER_LEVEL: ${LOGGER_LEVEL:-INFO}
+      TIME_ZONE: ${TIME_ZONE:-UTC}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_ACCESS_TOKEN_TTL: ${AUTH_ACCESS_TOKEN_TTL:-15m}
+      AUTH_REFRESH_TOKEN_TTL: ${AUTH_REFRESH_TOKEN_TTL:-720h}
+      AUTH_TOKEN_ISSUER: ${AUTH_TOKEN_ISSUER:-eventsapp}
+      AUTH_TOKEN_AUDIENCE: ${AUTH_TOKEN_AUDIENCE:-eventsapp-web}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-eventsapp_refresh}
+      AUTH_REFRESH_COOKIE_DOMAIN: ${AUTH_REFRESH_COOKIE_DOMAIN:-}
+      AUTH_REFRESH_COOKIE_SECURE: ${AUTH_REFRESH_COOKIE_SECURE:-true}
+      AUTH_REFRESH_COOKIE_SAME_SITE: ${AUTH_REFRESH_COOKIE_SAME_SITE:-strict}
+      AUTH_RATE_LIMIT_REQUESTS: ${AUTH_RATE_LIMIT_REQUESTS:-10}
+      AUTH_RATE_LIMIT_WINDOW: ${AUTH_RATE_LIMIT_WINDOW:-1m}
+      AUTH_RATE_LIMIT_TRUST_PROXY: "true"
+      LOGGER_FOLDER: /app/out/logs
+    expose:
+      - "5050"
     volumes:
       - ./out/logs:/app/out/logs
-    ports:
-      - "5050:5050"
-    restart: always
-  
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5050/health/ready"]
+      interval: 10s
+      timeout: 4s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   eventsapp-postgres:
     image: postgis/postgis:18-3.6
     container_name: eventsapp-env-postgres
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./out/pgdata:/var/lib/postgresql
-    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
   eventsapp-postgres-migrate:
     image: migrate/migrate:v4.19.1
+    depends_on:
+      eventsapp-postgres:
+        condition: service_healthy
     volumes:
-      - ./backend/migrations:/migrations
-  
+      - ./backend/migrations:/migrations:ro
+    command:
+      - -path
+      - /migrations
+      - -database
+      - postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE:-disable}&sslrootcert=${POSTGRES_SSL_ROOT_CERT:-}&search_path=public
+      - up
+
   port-forwarder:
     image: alpine/socat:1.8.0.3
+    profiles: ["dev"]
     container_name: eventsapp-postgres-port-forwarder
     command: tcp-listen:5432,fork,reuseaddr tcp-connect:eventsapp-postgres:5432
+    depends_on:
+      eventsapp-postgres:
+        condition: service_healthy
     ports:
       - "127.0.0.1:5432:5432"
-  
+
   swagger:
+    profiles: ["tools"]
     build:
       context: ./backend
       dockerfile_inline: |

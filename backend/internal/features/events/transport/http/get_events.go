@@ -25,11 +25,13 @@ type GetEventsResponse []EventDTOResponse
 // @Param 		south query number false "Южная граница видимой области"
 // @Param 		east query number false "Восточная граница видимой области"
 // @Param 		north query number false "Северная граница видимой области"
+// @Param 		creator_id query int false "ID создателя"
+// @Param 		participant_id query int false "ID участника"
+// @Param 		without_location query bool false "Только события без координат"
 // @Param 		limit query int false "Лимит событий"
 // @Param 		offset query int false "Смещение событий"
-// @Success 	200 {array} GetEventsResponse "Успешно полученный список событий"
+// @Success 	200 {array} EventDTOResponse "Успешно полученный список событий"
 // @Failure 	400 {object} core_http_response.ErrorResponse "Bad request"
-// @Failure 	404 {object} core_http_response.ErrorResponse "Event not found"
 // @Failure 	500 {object} core_http_response.ErrorResponse "Internal server error"
 // @Router 		/events [get]
 func (h *EventsHTTPHandler) GetEvents(rw http.ResponseWriter, r *http.Request) {
@@ -37,7 +39,7 @@ func (h *EventsHTTPHandler) GetEvents(rw http.ResponseWriter, r *http.Request) {
 	log := core_logger.FromContext(ctx)
 	responseHandler := core_http_response.NewHTTPResponseHandler(log, rw)
 
-	userLatitude, userLongitude, radius, bounds, limit, offset, err := getEventsParams(r)
+	userLatitude, userLongitude, radius, bounds, creatorID, participantID, withoutLocation, limit, offset, err := getEventsParams(r)
 	if err != nil {
 		responseHandler.ErrorResponse(
 			err,
@@ -53,6 +55,9 @@ func (h *EventsHTTPHandler) GetEvents(rw http.ResponseWriter, r *http.Request) {
 		userLongitude,
 		radius,
 		bounds,
+		creatorID,
+		participantID,
+		withoutLocation,
 		limit,
 		offset,
 	)
@@ -69,62 +74,81 @@ func (h *EventsHTTPHandler) GetEvents(rw http.ResponseWriter, r *http.Request) {
 
 func getEventsParams(
 	r *http.Request,
-) (*float64, *float64, *int, *domain.EventBounds, *int, *int, error) {
+) (*float64, *float64, *int, *domain.EventBounds, *int, *int, bool, *int, *int, error) {
 	const (
-		latitudeQueryParamKey  = "latitude"
-		longitudeQueryParamKey = "longitude"
-		radiusQueryParamKey    = "radius"
-		westQueryParamKey      = "west"
-		southQueryParamKey     = "south"
-		eastQueryParamKey      = "east"
-		northQueryParamKey     = "north"
-		limitQueryParamKey     = "limit"
-		offsetQueryParamKey    = "offset"
+		latitudeQueryParamKey        = "latitude"
+		longitudeQueryParamKey       = "longitude"
+		radiusQueryParamKey          = "radius"
+		westQueryParamKey            = "west"
+		southQueryParamKey           = "south"
+		eastQueryParamKey            = "east"
+		northQueryParamKey           = "north"
+		creatorIDQueryParamKey       = "creator_id"
+		participantIDQueryParamKey   = "participant_id"
+		withoutLocationQueryParamKey = "without_location"
+		limitQueryParamKey           = "limit"
+		offsetQueryParamKey          = "offset"
 	)
 
 	latitude, err := core_http_request.GetFloatQueryParam(r, latitudeQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'latitude' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'latitude' query param: %w", err)
 	}
 
 	longitude, err := core_http_request.GetFloatQueryParam(r, longitudeQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'longitude' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'longitude' query param: %w", err)
 	}
 
 	radius, err := core_http_request.GetIntQueryParam(r, radiusQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'radius' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'radius' query param: %w", err)
 	}
 
 	west, err := core_http_request.GetFloatQueryParam(r, westQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'west' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'west' query param: %w", err)
 	}
 
 	south, err := core_http_request.GetFloatQueryParam(r, southQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'south' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'south' query param: %w", err)
 	}
 
 	east, err := core_http_request.GetFloatQueryParam(r, eastQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'east' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'east' query param: %w", err)
 	}
 
 	north, err := core_http_request.GetFloatQueryParam(r, northQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'north' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'north' query param: %w", err)
 	}
 
 	hasAnyBound := west != nil || south != nil || east != nil || north != nil
 	hasAllBounds := west != nil && south != nil && east != nil && north != nil
 	if hasAnyBound && !hasAllBounds {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf(
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf(
 			"west, south, east and north must be either all set or all unset: %w",
 			core_errors.ErrInvalidArgument,
 		)
 	}
+
+	creatorID, err := core_http_request.GetPositiveIntQueryParam(r, creatorIDQueryParamKey)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'creator_id' query param: %w", err)
+	}
+
+	participantID, err := core_http_request.GetPositiveIntQueryParam(r, participantIDQueryParamKey)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'participant_id' query param: %w", err)
+	}
+
+	withoutLocationParam, err := core_http_request.GetBoolQueryParam(r, withoutLocationQueryParamKey)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'without_location' query param: %w", err)
+	}
+	withoutLocation := withoutLocationParam != nil && *withoutLocationParam
 
 	var bounds *domain.EventBounds
 	if hasAllBounds {
@@ -138,13 +162,13 @@ func getEventsParams(
 
 	limit, err := core_http_request.GetIntQueryParam(r, limitQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'limit' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'limit' query param: %w", err)
 	}
 
 	offset, err := core_http_request.GetIntQueryParam(r, offsetQueryParamKey)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("get 'offset' query param: %w", err)
+		return nil, nil, nil, nil, nil, nil, false, nil, nil, fmt.Errorf("get 'offset' query param: %w", err)
 	}
 
-	return latitude, longitude, radius, bounds, limit, offset, nil
+	return latitude, longitude, radius, bounds, creatorID, participantID, withoutLocation, limit, offset, nil
 }

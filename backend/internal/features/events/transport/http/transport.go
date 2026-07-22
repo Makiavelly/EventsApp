@@ -25,6 +25,9 @@ type EventsService interface {
 		longitude *float64,
 		radius *int,
 		bounds *domain.EventBounds,
+		creatorID *int,
+		participantID *int,
+		withoutLocation bool,
 		limit *int,
 		offset *int,
 	) ([]domain.Event, error)

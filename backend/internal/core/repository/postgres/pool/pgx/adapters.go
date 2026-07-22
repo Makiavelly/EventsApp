@@ -13,6 +13,22 @@ type pgxRows struct {
 	pgx.Rows
 }
 
+func (r pgxRows) Scan(dest ...any) error {
+	if err := r.Rows.Scan(dest...); err != nil {
+		return mapError(err)
+	}
+
+	return nil
+}
+
+func (r pgxRows) Err() error {
+	if err := r.Rows.Err(); err != nil {
+		return mapError(err)
+	}
+
+	return nil
+}
+
 type pgxRow struct {
 	pgx.Row
 }
@@ -32,9 +48,14 @@ type pgxCommandTag struct {
 }
 
 func mapError(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	const (
 		pgxViolatesForeignKeyErrorCode = "23503"
 		pgxViolatesUniqueErrorCode     = "23505"
+		pgxViolatesCheckErrorCode      = "23514"
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -56,6 +77,14 @@ func mapError(err error) error {
 				"%v: %w",
 				err,
 				core_postgres_pool.ErrViolatesUnique,
+			)
+		}
+
+		if pgErr.Code == pgxViolatesCheckErrorCode {
+			return fmt.Errorf(
+				"%v: %w",
+				err,
+				core_postgres_pool.ErrViolatesCheck,
 			)
 		}
 	}
