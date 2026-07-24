@@ -1,4 +1,3 @@
-import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCreateEvent } from "../api/queries";
 import type { CreateEventPayload } from "../api/types";
@@ -31,10 +30,7 @@ export function CreateEventPage() {
 
   return (
     <div className="grid gap-5">
-      <header>
-        <button type="button" onClick={() => navigate(-1)} className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-2xl px-2 text-sm font-bold text-meadow"><ArrowLeft size={18} />Назад</button>
-        <h1 className="sr-only">Новое событие</h1>
-      </header>
+      <h1 className="sr-only">Новое событие</h1>
       <EventForm submitLabel="Создать" pending={createEvent.isPending} serverError={createEvent.isError ? errorMessage(createEvent.error) : undefined} onSubmit={submit} onCancel={() => navigate(-1)} />
     </div>
   );

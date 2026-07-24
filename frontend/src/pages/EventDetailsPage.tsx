@@ -1,6 +1,6 @@
 import { ArrowLeft, CalendarDays, Clock3, Edit3, MapPin, Trash2, UsersRound } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDeleteEvent, useEvent, useJoinEvent, useLeaveEvent, useParticipants, usePublicUser } from "../api/queries";
 import { useAuth } from "../auth/useAuth";
 import { Button } from "../components/Button";
@@ -8,6 +8,8 @@ import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { StatusView } from "../components/StatusView";
 import { useToast } from "../toast/useToast";
+import { getDiscoverReturnState } from "../utils/discoverReturnState";
+import type { DiscoverLocationState } from "../utils/discoverReturnState";
 import { errorMessage, formatAutoDelete, formatDateTime, formatLocation } from "../utils/format";
 
 const EventMiniMap = lazy(() => import("../components/EventMiniMap").then((module) => ({ default: module.EventMiniMap })));
@@ -15,6 +17,7 @@ const EventMiniMap = lazy(() => import("../components/EventMiniMap").then((modul
 export function EventDetailsPage() {
   const eventId = Number(useParams().id);
   const { user } = useAuth();
+  const routeLocation = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -24,6 +27,7 @@ export function EventDetailsPage() {
   const joinEvent = useJoinEvent();
   const leaveEvent = useLeaveEvent(eventId);
   const deleteEvent = useDeleteEvent();
+  const discoverReturnState = getDiscoverReturnState(routeLocation.state);
 
   if (!Number.isFinite(eventId) || eventId <= 0) return <StatusView title="Некорректный ID события" tone="error" />;
   if (eventQuery.isLoading) return <StatusView title="Загружаем событие" description="Получаем детали и участников." tone="loading" />;
@@ -55,7 +59,13 @@ export function EventDetailsPage() {
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link to="/discover" className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-2xl px-2 text-sm font-bold text-meadow"><ArrowLeft size={18} />К событиям</Link>
+        <Link
+          to="/discover"
+          state={discoverReturnState ? { discover: discoverReturnState } satisfies DiscoverLocationState : undefined}
+          className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-2xl px-2 text-sm font-bold text-meadow"
+        >
+          <ArrowLeft size={18} />К событиям
+        </Link>
         {isCreator ? (
           <div className="flex gap-2">
             <Link to={`/events/${event.id}/edit`} className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-2xl border border-line bg-surface px-4 text-sm font-bold text-ink"><Edit3 size={17} />Изменить</Link>

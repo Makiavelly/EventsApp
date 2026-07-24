@@ -1,13 +1,16 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { List, LocateOff, Map as MapIcon, MapPin, Navigation, RefreshCw } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEvents } from "../api/queries";
 import type { Event, EventBounds, EventsFilters } from "../api/types";
 import { EventCard } from "../components/EventCard";
 import { MapEventCarousel } from "../components/MapEventCarousel";
+import { RadiusSlider } from "../components/RadiusSlider";
 import { SlidingSelector } from "../components/SlidingSelector";
 import { StatusView } from "../components/StatusView";
 import { useUserLocation } from "../hooks/useUserLocation";
+import { getDiscoverReturnState } from "../utils/discoverReturnState";
+import type { DiscoverLocationState, MapCameraState } from "../utils/discoverReturnState";
 import { distanceMeters, errorMessage } from "../utils/format";
 
 const EventMap = lazy(() => import("../components/EventMap").then((module) => ({ default: module.EventMap })));
@@ -15,11 +18,17 @@ type ViewMode = "map" | "list";
 type LocationFilter = "nearby" | "without-location";
 
 export function EventsPage() {
+  const routeLocation = useLocation();
+  const navigate = useNavigate();
+  const restoredStateRef = useRef(getDiscoverReturnState(routeLocation.state));
+  const restoredState = restoredStateRef.current;
   const [viewMode, setViewMode] = useState<ViewMode>("map");
   const [locationFilter, setLocationFilter] = useState<LocationFilter>("nearby");
   const [radiusKm, setRadiusKm] = useState(10);
   const [mapBounds, setMapBounds] = useState<EventBounds>();
-  const [selectedEvents, setSelectedEvents] = useState<Event[]>([]);
+  const [mapCamera, setMapCamera] = useState<MapCameraState | undefined>(restoredState?.mapCamera);
+  const [restoredActiveEventId, setRestoredActiveEventId] = useState(restoredState?.activeEventId);
+  const [selectedEvents, setSelectedEvents] = useState<Event[]>(restoredState?.events ?? []);
   const { location, status: locationStatus, message: locationMessage, retry } = useUserLocation();
 
   const mapFilters = useMemo<EventsFilters>(() => ({ bounds: mapBounds, limit: 500, offset: 0 }), [mapBounds]);
@@ -48,6 +57,25 @@ export function EventsPage() {
     return bounds;
   }), []);
 
+  const selectEvents = useCallback((events: Event[]) => {
+    setRestoredActiveEventId(undefined);
+    setSelectedEvents(events);
+  }, []);
+
+  const closeSelectedEvents = useCallback(() => {
+    setRestoredActiveEventId(undefined);
+    setSelectedEvents([]);
+    navigate(routeLocation.pathname, {
+      replace: true,
+      state: {
+        discover: {
+          events: [],
+          ...(mapCamera ? { mapCamera } : {}),
+        },
+      } satisfies DiscoverLocationState,
+    });
+  }, [mapCamera, navigate, routeLocation.pathname]);
+
   function setFilter(filter: LocationFilter) {
     setLocationFilter(filter);
     setSelectedEvents([]);
@@ -63,6 +91,8 @@ export function EventsPage() {
       onNearby={() => setFilter("nearby")}
       onWithoutLocation={() => setFilter("without-location")}
       showLocationFilters={viewMode === "list"}
+      radiusKm={radiusKm}
+      onRadiusChange={setRadiusKm}
     />
   );
 
@@ -85,12 +115,6 @@ export function EventsPage() {
         : "sticky top-0 z-20 mx-auto grid max-w-6xl gap-2 bg-mist/92 pb-3 backdrop-blur-xl"}
       >
         <div className={viewMode === "map" ? "pointer-events-auto" : undefined}>{controls}</div>
-        {viewMode === "list" && locationFilter === "nearby" ? (
-          <label className="grid gap-2 rounded-2xl border border-line bg-surface/95 px-4 py-3 shadow-panel">
-            <span className="flex items-center justify-between gap-3 text-sm font-extrabold text-ink"><span>Радиус</span><output htmlFor="search-radius" className="text-cocoa">{radiusKm} км</output></span>
-            <input id="search-radius" type="range" min="1" max="50" step="1" value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))} className="range-control w-full" />
-          </label>
-        ) : null}
         {locationStatusView ? <div className={viewMode === "map" ? "pointer-events-auto" : undefined}>{locationStatusView}</div> : null}
         {viewMode === "map" && mapQuery.isError ? <p className="pointer-events-auto rounded-2xl bg-clay p-3 text-sm font-semibold text-white shadow-float">{errorMessage(mapQuery.error)}</p> : null}
       </div>
@@ -98,7 +122,16 @@ export function EventsPage() {
       {viewMode === "map" ? (
         <div className="absolute inset-0 z-0">
           <Suspense fallback={<div className="grid h-full place-items-center bg-soft text-sm font-bold text-ink/55" role="status">Загружаем карту…</div>}>
-            <EventMap fullScreen events={mapEvents} isLoading={mapQuery.isFetching} userLocation={location} onBoundsChange={updateBounds} onSelectEvents={setSelectedEvents} />
+            <EventMap
+              fullScreen
+              events={mapEvents}
+              initialCamera={restoredState?.mapCamera}
+              isLoading={mapQuery.isFetching}
+              userLocation={location}
+              onBoundsChange={updateBounds}
+              onCameraChange={setMapCamera}
+              onSelectEvents={selectEvents}
+            />
           </Suspense>
         </div>
       ) : (
@@ -118,19 +151,25 @@ export function EventsPage() {
       )}
 
       {viewMode === "map" && selectedEvents.length > 0 ? (
-        <MapEventCarousel events={selectedEvents} userLocation={location} onClose={() => setSelectedEvents([])} />
+        <MapEventCarousel
+          events={selectedEvents}
+          initialEventId={restoredActiveEventId}
+          mapCamera={mapCamera}
+          userLocation={location}
+          onClose={closeSelectedEvents}
+        />
       ) : null}
     </div>
   );
 }
 
-function DiscoverControls({ viewMode, locationFilter, onMap, onList, onNearby, onWithoutLocation, showLocationFilters }: { viewMode: ViewMode; locationFilter: LocationFilter; onMap: () => void; onList: () => void; onNearby: () => void; onWithoutLocation: () => void; showLocationFilters: boolean }) {
+function DiscoverControls({ viewMode, locationFilter, onMap, onList, onNearby, onWithoutLocation, showLocationFilters, radiusKm, onRadiusChange }: { viewMode: ViewMode; locationFilter: LocationFilter; onMap: () => void; onList: () => void; onNearby: () => void; onWithoutLocation: () => void; showLocationFilters: boolean; radiusKm: number; onRadiusChange: (value: number) => void }) {
   return (
-    <div className="flex flex-wrap gap-2" aria-label="Режим и фильтр событий">
+    <div className="grid gap-2 md:flex md:items-center" aria-label="Режим и фильтр событий">
       <SlidingSelector
         value={viewMode}
         ariaLabel="Режим отображения"
-        className="min-w-[220px] flex-1 sm:flex-none"
+        className="w-full min-w-0 md:w-[220px] md:shrink-0"
         items={[
           { value: "map", label: "Карта", icon: <MapIcon size={17} /> },
           { value: "list", label: "Список", icon: <List size={17} /> },
@@ -138,16 +177,19 @@ function DiscoverControls({ viewMode, locationFilter, onMap, onList, onNearby, o
         onChange={(value) => value === "map" ? onMap() : onList()}
       />
       {showLocationFilters ? (
-        <SlidingSelector
-          value={locationFilter}
-          ariaLabel="Фильтр локации"
-          className="min-w-[220px] flex-1 sm:flex-none"
-          items={[
-            { value: "nearby", label: "Рядом", icon: <Navigation size={16} /> },
-            { value: "without-location", label: "Без локации", icon: <LocateOff size={16} /> },
-          ]}
-          onChange={(value) => value === "nearby" ? onNearby() : onWithoutLocation()}
-        />
+        <div className="grid min-w-0 flex-1 gap-2 md:flex md:items-center">
+          <SlidingSelector
+            value={locationFilter}
+            ariaLabel="Фильтр локации"
+            className="w-full min-w-0 md:w-[260px] md:shrink-0"
+            items={[
+              { value: "nearby", label: "Рядом", icon: <Navigation size={16} /> },
+              { value: "without-location", label: "Без локации", icon: <LocateOff size={16} /> },
+            ]}
+            onChange={(value) => value === "nearby" ? onNearby() : onWithoutLocation()}
+          />
+          {locationFilter === "nearby" ? <RadiusSlider value={radiusKm} onChange={onRadiusChange} /> : null}
+        </div>
       ) : null}
     </div>
   );

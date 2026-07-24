@@ -43,8 +43,7 @@ export function EditEventPage() {
     <div className="grid gap-5">
       <header>
         <button type="button" onClick={() => navigate(`/events/${eventId}`)} className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-2xl px-2 text-sm font-bold text-meadow"><ArrowLeft size={18} />К событию</button>
-        <p className="eyebrow mt-3">Управление</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-ink sm:text-5xl">Редактировать событие</h1>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-ink sm:text-5xl">Редактировать событие</h1>
       </header>
       <EventForm initial={eventQuery.data} submitLabel="Сохранить" pending={updateEvent.isPending} serverError={updateEvent.isError ? errorMessage(updateEvent.error) : undefined} onSubmit={submit} onCancel={() => navigate(`/events/${eventId}`)} />
     </div>

@@ -6,8 +6,8 @@ import { useJoinEvent, useParticipants } from "../api/queries";
 import type { Event, Location } from "../api/types";
 import { useAuth } from "../auth/useAuth";
 import { useToast } from "../toast/useToast";
+import type { DiscoverLocationState, MapCameraState } from "../utils/discoverReturnState";
 import { distanceMeters, errorMessage, formatDateTime, formatDistance } from "../utils/format";
-import { Button } from "./Button";
 
 const HORIZONTAL_SWIPE_THRESHOLD = 64;
 const VERTICAL_SWIPE_THRESHOLD = 52;
@@ -28,10 +28,10 @@ type StackEntry = {
   depth: number;
 };
 
-export function MapEventCarousel({ events, userLocation, onClose }: { events: Event[]; userLocation?: Location; onClose: () => void }) {
+export function MapEventCarousel({ events, initialEventId, mapCamera, userLocation, onClose }: { events: Event[]; initialEventId?: number; mapCamera?: MapCameraState; userLocation?: Location; onClose: () => void }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => eventIndex(events, initialEventId));
   const [dragX, setDragX] = useState(0);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -50,12 +50,12 @@ export function MapEventCarousel({ events, userLocation, onClose }: { events: Ev
   useEffect(() => {
     if (previousEventsKeyRef.current !== eventsKey) {
       previousEventsKeyRef.current = eventsKey;
-      setIndex(0);
+      setIndex(eventIndex(events, initialEventId));
       setDragX(0);
       setDragY(0);
       joinEvent.reset();
     }
-  }, [eventsKey, joinEvent]);
+  }, [events, eventsKey, initialEventId, joinEvent]);
 
   useEffect(() => {
     setIndex((current) => Math.min(current, Math.max(0, events.length - 1)));
@@ -243,9 +243,20 @@ export function MapEventCarousel({ events, userLocation, onClose }: { events: Ev
               {active ? (
                 <div className="mt-auto pt-3">
                   {joinEvent.isError ? <p role="alert" className="mb-3 text-sm font-semibold text-clay">{errorMessage(joinEvent.error)}</p> : null}
-                  <div className={`grid gap-2 ${canJoin ? "grid-cols-2" : "grid-cols-1"}`}>
-                    <Link to={`/events/${stackEvent.id}`} className="event-card-stack__details focus-ring flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-extrabold">Подробнее</Link>
-                    {canJoin ? <Button onClick={join}>Присоединиться</Button> : null}
+                  <div className="grid">
+                    <Link
+                      to={`/events/${stackEvent.id}`}
+                      state={{
+                        discover: {
+                          activeEventId: stackEvent.id,
+                          events,
+                          ...(mapCamera ? { mapCamera } : {}),
+                        },
+                      } satisfies DiscoverLocationState}
+                      className="event-card-stack__details focus-ring flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-extrabold"
+                    >
+                      Подробнее
+                    </Link>
                   </div>
                 </div>
               ) : null}
@@ -255,6 +266,11 @@ export function MapEventCarousel({ events, userLocation, onClose }: { events: Ev
       </div>
     </div>
   );
+}
+
+function eventIndex(events: Event[], eventId?: number) {
+  const index = events.findIndex((event) => event.id === eventId);
+  return index >= 0 ? index : 0;
 }
 
 function getStackDepth(eventIndex: number, activeIndex: number, eventCount: number) {
