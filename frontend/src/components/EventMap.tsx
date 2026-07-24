@@ -17,13 +17,16 @@ import OSM from "ol/source/OSM.js";
 import VectorSource from "ol/source/Vector.js";
 import { Circle as CircleStyle, Fill, RegularShape, Stroke, Style, Text } from "ol/style.js";
 import type { Event, EventBounds, Location } from "../api/types";
+import type { MapCameraState } from "../utils/discoverReturnState";
 
 type EventMapProps = {
   fullScreen?: boolean;
   events: Event[];
+  initialCamera?: MapCameraState;
   isLoading: boolean;
   userLocation?: Location;
   onBoundsChange: (bounds: EventBounds) => void;
+  onCameraChange?: (camera: MapCameraState) => void;
   onSelectEvents: (events: Event[]) => void;
 };
 
@@ -93,23 +96,27 @@ function clusterStyle(feature: FeatureLike) {
   });
 }
 
-export function EventMap({ fullScreen = false, events, isLoading, userLocation, onBoundsChange, onSelectEvents }: EventMapProps) {
+export function EventMap({ fullScreen = false, events, initialCamera, isLoading, userLocation, onBoundsChange, onCameraChange, onSelectEvents }: EventMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OpenLayersMap | null>(null);
   const sourceRef = useRef(new VectorSource<Feature<Point>>());
   const userOverlayRef = useRef<Overlay | null>(null);
+  const initialCameraRef = useRef(initialCamera);
   const onBoundsChangeRef = useRef(onBoundsChange);
+  const onCameraChangeRef = useRef(onCameraChange);
   const onSelectEventsRef = useRef(onSelectEvents);
-  const centeredOnUserRef = useRef(false);
+  const centeredOnUserRef = useRef(Boolean(initialCamera));
   const mappableEvents = useMemo(() => events.filter(isMappable), [events]);
 
   useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
+  useEffect(() => { onCameraChangeRef.current = onCameraChange; }, [onCameraChange]);
   useEffect(() => { onSelectEventsRef.current = onSelectEvents; }, [onSelectEvents]);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const clusterSource = new Cluster({ distance: 46, minDistance: 14, source: sourceRef.current });
+    const restoredCamera = initialCameraRef.current;
     const map = new OpenLayersMap({
       target: containerRef.current,
       controls: defaultControls({ rotate: false, attributionOptions: { collapsible: true } }),
@@ -123,7 +130,12 @@ export function EventMap({ fullScreen = false, events, isLoading, userLocation, 
         }),
         new VectorLayer({ source: clusterSource, style: clusterStyle }),
       ],
-      view: new View({ center: FALLBACK_CENTER, extent: WORLD_EXTENT, zoom: 10, maxZoom: 19 }),
+      view: new View({
+        center: restoredCamera ? [...restoredCamera.center] : FALLBACK_CENTER,
+        extent: WORLD_EXTENT,
+        zoom: restoredCamera?.zoom ?? 10,
+        maxZoom: 19,
+      }),
     });
     mapRef.current = map;
 
@@ -132,12 +144,22 @@ export function EventMap({ fullScreen = false, events, isLoading, userLocation, 
       const bounds = visibleBounds(map);
       if (bounds) onBoundsChangeRef.current(bounds);
     };
+    const publishCamera = () => {
+      const center = map.getView().getCenter();
+      const zoom = map.getView().getZoom();
+      if (!center || zoom === undefined) return;
+      onCameraChangeRef.current?.({ center: [center[0], center[1]], zoom });
+    };
     const scheduleBounds = () => {
       window.clearTimeout(boundsTimeout);
       boundsTimeout = window.setTimeout(publishBounds, BOUNDS_CHANGE_DELAY_MS);
     };
+    const handleMoveEnd = () => {
+      publishCamera();
+      scheduleBounds();
+    };
 
-    map.on("moveend", scheduleBounds);
+    map.on("moveend", handleMoveEnd);
     map.on("pointermove", (event) => {
       map.getTargetElement().style.cursor = map.hasFeatureAtPixel(event.pixel) ? "pointer" : "";
     });
@@ -169,6 +191,7 @@ export function EventMap({ fullScreen = false, events, isLoading, userLocation, 
     const frame = window.requestAnimationFrame(() => {
       map.updateSize();
       publishBounds();
+      publishCamera();
     });
 
     return () => {
