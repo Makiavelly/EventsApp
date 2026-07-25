@@ -125,7 +125,7 @@ export function EventsPage() {
             <EventMap
               fullScreen
               events={mapEvents}
-              initialCamera={restoredState?.mapCamera}
+              initialCamera={mapCamera ?? restoredState?.mapCamera}
               isLoading={mapQuery.isFetching}
               userLocation={location}
               onBoundsChange={updateBounds}

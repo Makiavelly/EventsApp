@@ -8,6 +8,7 @@ import View from "ol/View.js";
 import { defaults as defaultControls } from "ol/control/defaults.js";
 import { createEmpty, extendCoordinate } from "ol/extent.js";
 import Point from "ol/geom/Point.js";
+import { defaults as defaultInteractions } from "ol/interaction/defaults.js";
 import TileLayer from "ol/layer/Tile.js";
 import VectorLayer from "ol/layer/Vector.js";
 import "ol/ol.css";
@@ -15,9 +16,11 @@ import { fromLonLat, transformExtent } from "ol/proj.js";
 import Cluster from "ol/source/Cluster.js";
 import OSM from "ol/source/OSM.js";
 import VectorSource from "ol/source/Vector.js";
-import { Circle as CircleStyle, Fill, RegularShape, Stroke, Style, Text } from "ol/style.js";
+import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style.js";
 import type { Event, EventBounds, Location } from "../api/types";
 import type { MapCameraState } from "../utils/discoverReturnState";
+import { eventMarkerRadius, eventMarkerStyle } from "../utils/eventMarkerStyle";
+import { createUserLocationOverlay, syncUserBeaconCollision } from "../utils/userLocationBeacon";
 
 type EventMapProps = {
   fullScreen?: boolean;
@@ -68,18 +71,7 @@ function clusterStyle(feature: FeatureLike) {
   const count = features?.length ?? 1;
   const clustered = count > 1;
   if (!clustered) {
-    return [
-      new Style({
-        image: new RegularShape({
-          points: 4,
-          radius: 12,
-          angle: Math.PI / 4,
-          fill: new Fill({ color: "#6f4636" }),
-          stroke: new Stroke({ color: "#fff8ee", width: 3 }),
-        }),
-      }),
-      new Style({ image: new CircleStyle({ radius: 3, fill: new Fill({ color: "#f7b892" }) }) }),
-    ];
+    return features?.[0]?.get("markerStyle") as Style | Style[] | undefined;
   }
 
   return new Style({
@@ -94,6 +86,22 @@ function clusterStyle(feature: FeatureLike) {
       font: "700 12px ui-sans-serif, system-ui",
     }),
   });
+}
+
+function syncMapUserBeacon(
+  map: OpenLayersMap,
+  overlay: Overlay | null,
+  source: VectorSource<Feature<Point>>,
+) {
+  syncUserBeaconCollision(
+    map,
+    overlay,
+    source.getFeatures().flatMap((feature) => {
+      const coordinate = feature.getGeometry()?.getCoordinates();
+      if (!coordinate) return [];
+      return [{ coordinate, radius: feature.get("markerRadius") as number }];
+    }),
+  );
 }
 
 export function EventMap({ fullScreen = false, events, initialCamera, isLoading, userLocation, onBoundsChange, onCameraChange, onSelectEvents }: EventMapProps) {
@@ -120,6 +128,7 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
     const map = new OpenLayersMap({
       target: containerRef.current,
       controls: defaultControls({ rotate: false, attributionOptions: { collapsible: true } }),
+      interactions: defaultInteractions({ onFocusOnly: false }),
       layers: [
         new TileLayer({
           className: "map-tiles",
@@ -157,6 +166,7 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
     const handleMoveEnd = () => {
       publishCamera();
       scheduleBounds();
+      syncMapUserBeacon(map, userOverlayRef.current, sourceRef.current);
     };
 
     map.on("moveend", handleMoveEnd);
@@ -210,22 +220,22 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
         geometry: new Point(fromLonLat([event.location.longitude, event.location.latitude])),
       });
       feature.set("event", event);
+      feature.set("markerStyle", eventMarkerStyle(event));
+      feature.set("markerRadius", eventMarkerRadius(event));
       return feature;
     }));
+    if (mapRef.current) syncMapUserBeacon(mapRef.current, userOverlayRef.current, sourceRef.current);
   }, [mappableEvents]);
 
   useEffect(() => {
     const map = mapRef.current;
+    if (map && userOverlayRef.current) map.removeOverlay(userOverlayRef.current);
+    userOverlayRef.current = null;
     if (!map || !userLocation) return;
-    if (userOverlayRef.current) map.removeOverlay(userOverlayRef.current);
-    const element = document.createElement("div");
-    element.className = "user-beacon";
-    element.setAttribute("role", "img");
-    element.setAttribute("aria-label", "Ваше местоположение");
     const coordinate = fromLonLat([userLocation.longitude, userLocation.latitude]);
-    const overlay = new Overlay({ element, position: coordinate, positioning: "center-center", stopEvent: false });
-    map.addOverlay(overlay);
+    const overlay = createUserLocationOverlay(map, userLocation);
     userOverlayRef.current = overlay;
+    syncMapUserBeacon(map, overlay, sourceRef.current);
     if (!centeredOnUserRef.current) {
       map.getView().animate({ center: coordinate, zoom: Math.max(13, map.getView().getZoom() ?? 10), duration: 350 });
       centeredOnUserRef.current = true;

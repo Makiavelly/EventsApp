@@ -30,6 +30,8 @@ type Event struct {
 	Title                  string
 	Description            *string
 	Location               *EventLocation
+	Marker                 *EventMarker
+	MarkerSize             EventMarkerSize
 	DateMeeting            *time.Time
 	AutoDeletePolicy       EventAutoDeletePolicy
 	AutoDeleteAfterSeconds *int
@@ -49,6 +51,7 @@ func NewEvent(
 		Title:            title,
 		Description:      description,
 		Location:         location,
+		MarkerSize:       EventMarkerNormal,
 		DateMeeting:      DateMeeting,
 		AutoDeletePolicy: EventAutoDeleteNever,
 	}
@@ -84,6 +87,7 @@ func NewEventUninitialized(
 		Title:            title,
 		Description:      description,
 		Location:         location,
+		MarkerSize:       EventMarkerNormal,
 		DateMeeting:      dateMeeting,
 		AutoDeletePolicy: EventAutoDeleteNever,
 	}
@@ -113,6 +117,12 @@ func (e *Event) Validate() error {
 		return err
 	}
 	if err := ValidateEventLocation(e.Location); err != nil {
+		return err
+	}
+	if err := ValidateEventMarker(e.Marker); err != nil {
+		return err
+	}
+	if err := ValidateEventMarkerSize(e.MarkerSize); err != nil {
 		return err
 	}
 	if err := ValidateEventDateMeeting(e.DateMeeting, time.Now()); err != nil {
@@ -236,6 +246,7 @@ type EventPatch struct {
 	Title                  Nullable[string]
 	Description            Nullable[string]
 	Location               Nullable[EventLocation]
+	Marker                 Nullable[EventMarker]
 	DateMeeting            Nullable[time.Time]
 	AutoDeletePolicy       Nullable[EventAutoDeletePolicy]
 	AutoDeleteAfterSeconds Nullable[int]
@@ -292,6 +303,12 @@ func (p *EventPatch) Validate() error {
 		}
 	}
 
+	if p.Marker.Set {
+		if err := ValidateEventMarker(p.Marker.Value); err != nil {
+			return err
+		}
+	}
+
 	if p.DateMeeting.Set {
 		if err := ValidateEventDateMeeting(p.DateMeeting.Value, time.Now()); err != nil {
 			return err
@@ -324,6 +341,10 @@ func (e *Event) ApplyPatch(patch EventPatch) error {
 		tmp.Location = patch.Location.Value
 	}
 
+	if patch.Marker.Set {
+		tmp.Marker = patch.Marker.Value
+	}
+
 	if patch.DateMeeting.Set {
 		tmp.DateMeeting = patch.DateMeeting.Value
 	}
@@ -344,6 +365,12 @@ func (e *Event) ApplyPatch(patch EventPatch) error {
 	}
 	if err := ValidateEventLocation(tmp.Location); err != nil {
 		return fmt.Errorf("validate patched event location: %w", err)
+	}
+	if err := ValidateEventMarker(tmp.Marker); err != nil {
+		return fmt.Errorf("validate patched event marker: %w", err)
+	}
+	if err := ValidateEventMarkerSize(tmp.MarkerSize); err != nil {
+		return fmt.Errorf("validate patched event marker size: %w", err)
 	}
 	if err := ValidateEventAutoDelete(tmp.AutoDeletePolicy, tmp.AutoDeleteAfterSeconds, tmp.DateMeeting); err != nil {
 		return fmt.Errorf("validate patched event auto delete: %w", err)

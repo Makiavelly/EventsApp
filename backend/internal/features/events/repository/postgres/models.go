@@ -13,6 +13,9 @@ type EventModel struct {
 	Description            *string
 	Latitude               *float64
 	Longitude              *float64
+	MarkerKind             *string
+	MarkerValue            *string
+	MarkerSize             string
 	DateMeeting            *time.Time
 	AutoDeletePolicy       string
 	AutoDeleteAfterSeconds *int
@@ -29,7 +32,7 @@ func eventDomainFromModel(eventModel EventModel) domain.Event {
 		}
 	}
 
-	return domain.NewEventWithPolicy(
+	event := domain.NewEventWithPolicy(
 		eventModel.ID,
 		eventModel.CreatorID,
 		eventModel.Title,
@@ -39,6 +42,15 @@ func eventDomainFromModel(eventModel EventModel) domain.Event {
 		domain.EventAutoDeletePolicy(eventModel.AutoDeletePolicy),
 		eventModel.AutoDeleteAfterSeconds,
 	)
+	if eventModel.MarkerKind != nil && eventModel.MarkerValue != nil {
+		event.Marker = &domain.EventMarker{
+			Kind:  domain.EventMarkerKind(*eventModel.MarkerKind),
+			Value: *eventModel.MarkerValue,
+		}
+	}
+	event.MarkerSize = domain.EventMarkerSize(eventModel.MarkerSize)
+
+	return event
 }
 
 func eventsDomainsFromModels(eventModels []EventModel) []domain.Event {

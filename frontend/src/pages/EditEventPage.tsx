@@ -26,10 +26,8 @@ export function EditEventPage() {
     const payload: PatchEventPayload = {
       title: value.title,
       description: value.description,
-      location: value.location,
+      marker: value.marker,
       date_meeting: value.date_meeting,
-      auto_delete_policy: value.auto_delete_policy,
-      auto_delete_after_seconds: value.auto_delete_after_seconds,
     };
     updateEvent.mutate(payload, {
       onSuccess: () => {
@@ -45,7 +43,7 @@ export function EditEventPage() {
         <button type="button" onClick={() => navigate(`/events/${eventId}`)} className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-2xl px-2 text-sm font-bold text-meadow"><ArrowLeft size={18} />К событию</button>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-ink sm:text-5xl">Редактировать событие</h1>
       </header>
-      <EventForm initial={eventQuery.data} submitLabel="Сохранить" pending={updateEvent.isPending} serverError={updateEvent.isError ? errorMessage(updateEvent.error) : undefined} onSubmit={submit} onCancel={() => navigate(`/events/${eventId}`)} />
+      <EventForm initial={eventQuery.data} mode="edit" submitLabel="Сохранить" pending={updateEvent.isPending} serverError={updateEvent.isError ? errorMessage(updateEvent.error) : undefined} onSubmit={submit} onCancel={() => navigate(`/events/${eventId}`)} />
     </div>
   );
 }

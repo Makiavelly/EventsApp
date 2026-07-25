@@ -1034,6 +1034,30 @@ const docTemplate = `{
                 "EventAutoDeleteNever"
             ]
         },
+        "github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerKind": {
+            "type": "string",
+            "enum": [
+                "emoji",
+                "color",
+                "image"
+            ],
+            "x-enum-varnames": [
+                "EventMarkerEmoji",
+                "EventMarkerColor",
+                "EventMarkerImage"
+            ]
+        },
+        "github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize": {
+            "type": "string",
+            "enum": [
+                "normal",
+                "large"
+            ],
+            "x-enum-varnames": [
+                "EventMarkerNormal",
+                "EventMarkerLarge"
+            ]
+        },
         "github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -1183,6 +1207,9 @@ const docTemplate = `{
                 "location": {
                     "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
                 },
+                "marker": {
+                    "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
                 "title": {
                     "type": "string",
                     "example": "Sport"
@@ -1222,6 +1249,21 @@ const docTemplate = `{
                 },
                 "location": {
                     "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "marker": {
+                    "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
                 },
                 "title": {
                     "type": "string",
@@ -1263,9 +1305,46 @@ const docTemplate = `{
                 "location": {
                     "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
                 },
+                "marker": {
+                    "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
+                },
                 "title": {
                     "type": "string",
                     "example": "Sport meetup"
+                }
+            }
+        },
+        "internal_features_events_transport_http.EventMarkerDTO": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "emoji",
+                        "color",
+                        "image"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerKind"
+                        }
+                    ],
+                    "example": "emoji"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "⚽"
                 }
             }
         },
@@ -1303,6 +1382,21 @@ const docTemplate = `{
                 "location": {
                     "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
                 },
+                "marker": {
+                    "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
+                },
                 "title": {
                     "type": "string",
                     "example": "Sport meetup"
@@ -1330,6 +1424,9 @@ const docTemplate = `{
                     "example": "Discuss Go backend development"
                 },
                 "location": {
+                    "type": "object"
+                },
+                "marker": {
                     "type": "object"
                 },
                 "title": {
@@ -1371,6 +1468,21 @@ const docTemplate = `{
                 },
                 "location": {
                     "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location"
+                },
+                "marker": {
+                    "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
                 },
                 "title": {
                     "type": "string",
