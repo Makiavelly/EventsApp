@@ -15,6 +15,7 @@ type EventModel struct {
 	Longitude              *float64
 	MarkerKind             *string
 	MarkerValue            *string
+	MarkerSize             string
 	DateMeeting            *time.Time
 	AutoDeletePolicy       string
 	AutoDeleteAfterSeconds *int
@@ -47,6 +48,7 @@ func eventDomainFromModel(eventModel EventModel) domain.Event {
 			Value: *eventModel.MarkerValue,
 		}
 	}
+	event.MarkerSize = domain.EventMarkerSize(eventModel.MarkerSize)
 
 	return event
 }

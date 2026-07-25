@@ -13,6 +13,8 @@ export type EventMarker =
   | { kind: "color"; value: string }
   | { kind: "image"; value: string };
 
+export type EventMarkerSize = "normal" | "large";
+
 export type Event = {
   id: number;
   creator_user_id: number;
@@ -20,6 +22,7 @@ export type Event = {
   description?: string | null;
   location?: Location | null;
   marker?: EventMarker | null;
+  marker_size: EventMarkerSize;
   date_meeting?: string | null;
   auto_delete_policy: AutoDeletePolicy;
   auto_delete_after_seconds?: number | null;

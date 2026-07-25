@@ -19,6 +19,7 @@ export type EventFormValue = {
 
 type EventFormProps = {
   initial?: Event;
+  mode?: "create" | "edit";
   submitLabel: string;
   pending: boolean;
   serverError?: string;
@@ -43,12 +44,13 @@ function localDateTime(value?: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
-export function EventForm({ initial, submitLabel, pending, serverError, onSubmit, onCancel }: EventFormProps) {
+export function EventForm({ initial, mode = "create", submitLabel, pending, serverError, onSubmit, onCancel }: EventFormProps) {
   const initialSeconds = initial?.auto_delete_after_seconds ?? 7200;
   const useDays = initialSeconds >= 86400 && initialSeconds % 86400 === 0;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [location, setLocation] = useState<Location | undefined>(initial?.location ?? undefined);
+  const [omitLocation, setOmitLocation] = useState(Boolean(initial && !initial.location));
   const [marker, setMarker] = useState<EventMarker | null>(initial?.marker ?? null);
   const [markerProcessing, setMarkerProcessing] = useState(false);
   const [dateMeeting, setDateMeeting] = useState(localDateTime(initial?.date_meeting));
@@ -58,6 +60,8 @@ export function EventForm({ initial, submitLabel, pending, serverError, onSubmit
   const [step, setStep] = useState<FormStep>(1);
   const [furthestStep, setFurthestStep] = useState<FormStep>(1);
   const [formError, setFormError] = useState<string>();
+  const lastStep: FormStep = mode === "edit" ? 2 : 4;
+  const visibleSteps = mode === "edit" ? steps.slice(0, 2) : steps;
   const dateMax = new Date();
   dateMax.setFullYear(dateMax.getFullYear() + 1);
 
@@ -102,19 +106,19 @@ export function EventForm({ initial, submitLabel, pending, serverError, onSubmit
     const details = validateDetails();
     if (!details) return;
 
-    if (step < 4) {
+    if (step < lastStep) {
       openStep((step + 1) as FormStep);
       return;
     }
 
-    if (policy !== "never" && !details.dateIso) {
+    if (mode === "create" && policy !== "never" && !details.dateIso) {
       setFormError("Укажите дату события.");
       setStep(1);
       return;
     }
 
     let afterSeconds: number | null = null;
-    if (policy === "after_interval") {
+    if (mode === "create" && policy === "after_interval") {
       const amount = Number(intervalAmount);
       if (!Number.isFinite(amount) || amount <= 0) {
         setFormError("Укажите положительный интервал автоудаления.");
@@ -140,8 +144,8 @@ export function EventForm({ initial, submitLabel, pending, serverError, onSubmit
 
   return (
     <form onSubmit={submit} className="grid gap-6">
-      <nav className="grid grid-cols-4 gap-2" aria-label="Шаги формы">
-        {steps.map((item) => {
+      <nav className={`grid gap-2 ${mode === "edit" ? "grid-cols-2" : "grid-cols-4"}`} aria-label="Шаги формы">
+        {visibleSteps.map((item) => {
           const active = item.id === step;
           const available = item.id <= furthestStep;
           return (
@@ -171,7 +175,13 @@ export function EventForm({ initial, submitLabel, pending, serverError, onSubmit
 
       {step === 3 ? (
         <section className="view-enter app-card p-4 sm:p-5" aria-label="Место события">
-          <LocationPicker value={location} onChange={setLocation} />
+          <LocationPicker
+            value={location}
+            marker={marker}
+            omitted={omitLocation}
+            onChange={setLocation}
+            onOmittedChange={setOmitLocation}
+          />
         </section>
       ) : null}
 
@@ -198,7 +208,7 @@ export function EventForm({ initial, submitLabel, pending, serverError, onSubmit
 
       <div className="sticky bottom-24 z-20 grid grid-cols-2 gap-3 rounded-app border border-line bg-surface/95 p-3 shadow-float backdrop-blur-xl sm:static sm:ml-auto sm:flex sm:bg-transparent sm:p-0 sm:shadow-none">
         {step === 1 ? <Button variant="secondary" onClick={onCancel} disabled={pending || markerProcessing}>Отмена</Button> : <Button variant="secondary" icon={<ArrowLeft size={18} />} onClick={() => openStep((step - 1) as FormStep)} disabled={pending || markerProcessing}>Назад</Button>}
-        <Button type="submit" icon={step < 4 ? <ArrowRight size={18} /> : undefined} disabled={pending || markerProcessing}>{pending ? "Сохраняем…" : markerProcessing ? "Готовим…" : step === 3 ? (location ? "Продолжить" : "Пропустить") : step < 4 ? "Продолжить" : submitLabel}</Button>
+        <Button type="submit" icon={step < lastStep ? <ArrowRight size={18} /> : undefined} disabled={pending || markerProcessing}>{pending ? "Сохраняем…" : markerProcessing ? "Готовим…" : step === 3 ? (omitLocation ? "Продолжить без места" : "Продолжить") : step < lastStep ? "Продолжить" : submitLabel}</Button>
       </div>
     </form>
   );

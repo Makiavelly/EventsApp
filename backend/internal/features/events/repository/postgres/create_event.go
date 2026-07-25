@@ -53,6 +53,7 @@ func (r *EventsRepository) CreateEvent(
     	ST_X(location::geometry) AS longitude,
 		marker_kind,
 		marker_value,
+		marker_size,
 		date_meeting,
 		auto_delete_policy,
 		auto_delete_after_seconds
@@ -105,6 +106,7 @@ func (r *EventsRepository) CreateEvent(
 		&eventModel.Longitude,
 		&eventModel.MarkerKind,
 		&eventModel.MarkerValue,
+		&eventModel.MarkerSize,
 		&eventModel.DateMeeting,
 		&eventModel.AutoDeletePolicy,
 		&eventModel.AutoDeleteAfterSeconds,

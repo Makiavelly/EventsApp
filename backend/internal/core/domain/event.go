@@ -31,6 +31,7 @@ type Event struct {
 	Description            *string
 	Location               *EventLocation
 	Marker                 *EventMarker
+	MarkerSize             EventMarkerSize
 	DateMeeting            *time.Time
 	AutoDeletePolicy       EventAutoDeletePolicy
 	AutoDeleteAfterSeconds *int
@@ -50,6 +51,7 @@ func NewEvent(
 		Title:            title,
 		Description:      description,
 		Location:         location,
+		MarkerSize:       EventMarkerNormal,
 		DateMeeting:      DateMeeting,
 		AutoDeletePolicy: EventAutoDeleteNever,
 	}
@@ -85,6 +87,7 @@ func NewEventUninitialized(
 		Title:            title,
 		Description:      description,
 		Location:         location,
+		MarkerSize:       EventMarkerNormal,
 		DateMeeting:      dateMeeting,
 		AutoDeletePolicy: EventAutoDeleteNever,
 	}
@@ -117,6 +120,9 @@ func (e *Event) Validate() error {
 		return err
 	}
 	if err := ValidateEventMarker(e.Marker); err != nil {
+		return err
+	}
+	if err := ValidateEventMarkerSize(e.MarkerSize); err != nil {
 		return err
 	}
 	if err := ValidateEventDateMeeting(e.DateMeeting, time.Now()); err != nil {
@@ -362,6 +368,9 @@ func (e *Event) ApplyPatch(patch EventPatch) error {
 	}
 	if err := ValidateEventMarker(tmp.Marker); err != nil {
 		return fmt.Errorf("validate patched event marker: %w", err)
+	}
+	if err := ValidateEventMarkerSize(tmp.MarkerSize); err != nil {
+		return fmt.Errorf("validate patched event marker size: %w", err)
 	}
 	if err := ValidateEventAutoDelete(tmp.AutoDeletePolicy, tmp.AutoDeleteAfterSeconds, tmp.DateMeeting); err != nil {
 		return fmt.Errorf("validate patched event auto delete: %w", err)

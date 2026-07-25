@@ -1047,6 +1047,17 @@ const docTemplate = `{
                 "EventMarkerImage"
             ]
         },
+        "github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize": {
+            "type": "string",
+            "enum": [
+                "normal",
+                "large"
+            ],
+            "x-enum-varnames": [
+                "EventMarkerNormal",
+                "EventMarkerLarge"
+            ]
+        },
         "github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -1242,6 +1253,18 @@ const docTemplate = `{
                 "marker": {
                     "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
                 },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
+                },
                 "title": {
                     "type": "string",
                     "example": "Sport meetup"
@@ -1284,6 +1307,18 @@ const docTemplate = `{
                 },
                 "marker": {
                     "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
                 },
                 "title": {
                     "type": "string",
@@ -1349,6 +1384,18 @@ const docTemplate = `{
                 },
                 "marker": {
                     "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
                 },
                 "title": {
                     "type": "string",
@@ -1424,6 +1471,18 @@ const docTemplate = `{
                 },
                 "marker": {
                     "$ref": "#/definitions/internal_features_events_transport_http.EventMarkerDTO"
+                },
+                "marker_size": {
+                    "enum": [
+                        "normal",
+                        "large"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize"
+                        }
+                    ],
+                    "example": "normal"
                 },
                 "title": {
                     "type": "string",

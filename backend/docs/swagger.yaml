@@ -20,6 +20,14 @@ definitions:
     - EventMarkerEmoji
     - EventMarkerColor
     - EventMarkerImage
+  github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize:
+    enum:
+    - normal
+    - large
+    type: string
+    x-enum-varnames:
+    - EventMarkerNormal
+    - EventMarkerLarge
   github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse:
     properties:
       error:
@@ -152,6 +160,13 @@ definitions:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       marker:
         $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
+      marker_size:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize'
+        enum:
+        - normal
+        - large
+        example: normal
       title:
         example: Sport meetup
         type: string
@@ -181,6 +196,13 @@ definitions:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       marker:
         $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
+      marker_size:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize'
+        enum:
+        - normal
+        - large
+        example: normal
       title:
         example: Sport meetup
         type: string
@@ -224,6 +246,13 @@ definitions:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       marker:
         $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
+      marker_size:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize'
+        enum:
+        - normal
+        - large
+        example: normal
       title:
         example: Sport meetup
         type: string
@@ -276,6 +305,13 @@ definitions:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
       marker:
         $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
+      marker_size:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerSize'
+        enum:
+        - normal
+        - large
+        example: normal
       title:
         example: Sport meetup
         type: string

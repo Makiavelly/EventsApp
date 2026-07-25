@@ -8,6 +8,7 @@ import View from "ol/View.js";
 import { defaults as defaultControls } from "ol/control/defaults.js";
 import { createEmpty, extendCoordinate } from "ol/extent.js";
 import Point from "ol/geom/Point.js";
+import { defaults as defaultInteractions } from "ol/interaction/defaults.js";
 import TileLayer from "ol/layer/Tile.js";
 import VectorLayer from "ol/layer/Vector.js";
 import "ol/ol.css";
@@ -15,9 +16,11 @@ import { fromLonLat, transformExtent } from "ol/proj.js";
 import Cluster from "ol/source/Cluster.js";
 import OSM from "ol/source/OSM.js";
 import VectorSource from "ol/source/Vector.js";
-import { Circle as CircleStyle, Fill, Icon, Stroke, Style, Text } from "ol/style.js";
+import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style.js";
 import type { Event, EventBounds, Location } from "../api/types";
 import type { MapCameraState } from "../utils/discoverReturnState";
+import { eventMarkerRadius, eventMarkerStyle } from "../utils/eventMarkerStyle";
+import { createUserLocationOverlay, syncUserBeaconCollision } from "../utils/userLocationBeacon";
 
 type EventMapProps = {
   fullScreen?: boolean;
@@ -63,70 +66,6 @@ function visibleBounds(map: OpenLayersMap): EventBounds | undefined {
   };
 }
 
-function shadeHex(color: string, factor: number) {
-  const value = Number.parseInt(color.slice(1), 16);
-  const red = Math.max(0, Math.min(255, Math.round(((value >> 16) & 255) * factor)));
-  const green = Math.max(0, Math.min(255, Math.round(((value >> 8) & 255) * factor)));
-  const blue = Math.max(0, Math.min(255, Math.round((value & 255) * factor)));
-  return `rgb(${red} ${green} ${blue})`;
-}
-
-function enamelMarkerStyle(color: string) {
-  return [
-    new Style({
-      image: new CircleStyle({
-        radius: 15,
-        fill: new Fill({ color: shadeHex(color, 0.72) }),
-        stroke: new Stroke({ color: "#fff8ee", width: 2.5 }),
-      }),
-    }),
-    new Style({
-      image: new CircleStyle({
-        radius: 12,
-        displacement: [0, 1],
-        fill: new Fill({ color }),
-      }),
-    }),
-    new Style({
-      image: new CircleStyle({
-        radius: 3,
-        displacement: [-4, 5],
-        fill: new Fill({ color: "rgba(255, 255, 255, 0.72)" }),
-      }),
-    }),
-  ];
-}
-
-function eventMarkerStyle(event?: Event) {
-  const marker = event?.marker;
-
-  let style: Style | Style[];
-  if (!marker) {
-    style = enamelMarkerStyle("#D8BCA0");
-  } else if (marker.kind === "emoji") {
-    style = new Style({
-      text: new Text({
-        text: marker.value,
-        font: '28px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
-        textBaseline: "middle",
-        offsetY: 1,
-      }),
-    });
-  } else if (marker.kind === "image") {
-    style = new Style({
-      image: new Icon({
-        src: marker.value,
-        width: 36,
-        height: 36,
-      }),
-    });
-  } else {
-    style = enamelMarkerStyle(marker.value);
-  }
-
-  return style;
-}
-
 function clusterStyle(feature: FeatureLike) {
   const features = feature.get("features") as Feature<Point>[] | undefined;
   const count = features?.length ?? 1;
@@ -147,6 +86,22 @@ function clusterStyle(feature: FeatureLike) {
       font: "700 12px ui-sans-serif, system-ui",
     }),
   });
+}
+
+function syncMapUserBeacon(
+  map: OpenLayersMap,
+  overlay: Overlay | null,
+  source: VectorSource<Feature<Point>>,
+) {
+  syncUserBeaconCollision(
+    map,
+    overlay,
+    source.getFeatures().flatMap((feature) => {
+      const coordinate = feature.getGeometry()?.getCoordinates();
+      if (!coordinate) return [];
+      return [{ coordinate, radius: feature.get("markerRadius") as number }];
+    }),
+  );
 }
 
 export function EventMap({ fullScreen = false, events, initialCamera, isLoading, userLocation, onBoundsChange, onCameraChange, onSelectEvents }: EventMapProps) {
@@ -173,6 +128,7 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
     const map = new OpenLayersMap({
       target: containerRef.current,
       controls: defaultControls({ rotate: false, attributionOptions: { collapsible: true } }),
+      interactions: defaultInteractions({ onFocusOnly: false }),
       layers: [
         new TileLayer({
           className: "map-tiles",
@@ -210,6 +166,7 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
     const handleMoveEnd = () => {
       publishCamera();
       scheduleBounds();
+      syncMapUserBeacon(map, userOverlayRef.current, sourceRef.current);
     };
 
     map.on("moveend", handleMoveEnd);
@@ -264,22 +221,21 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
       });
       feature.set("event", event);
       feature.set("markerStyle", eventMarkerStyle(event));
+      feature.set("markerRadius", eventMarkerRadius(event));
       return feature;
     }));
+    if (mapRef.current) syncMapUserBeacon(mapRef.current, userOverlayRef.current, sourceRef.current);
   }, [mappableEvents]);
 
   useEffect(() => {
     const map = mapRef.current;
+    if (map && userOverlayRef.current) map.removeOverlay(userOverlayRef.current);
+    userOverlayRef.current = null;
     if (!map || !userLocation) return;
-    if (userOverlayRef.current) map.removeOverlay(userOverlayRef.current);
-    const element = document.createElement("div");
-    element.className = "user-beacon";
-    element.setAttribute("role", "img");
-    element.setAttribute("aria-label", "Ваше местоположение");
     const coordinate = fromLonLat([userLocation.longitude, userLocation.latitude]);
-    const overlay = new Overlay({ element, position: coordinate, positioning: "center-center", stopEvent: false });
-    map.addOverlay(overlay);
+    const overlay = createUserLocationOverlay(map, userLocation);
     userOverlayRef.current = overlay;
+    syncMapUserBeacon(map, overlay, sourceRef.current);
     if (!centeredOnUserRef.current) {
       map.getView().animate({ center: coordinate, zoom: Math.max(13, map.getView().getZoom() ?? 10), duration: 350 });
       centeredOnUserRef.current = true;

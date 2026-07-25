@@ -21,11 +21,15 @@ const (
 )
 
 type EventMarkerKind string
+type EventMarkerSize string
 
 const (
 	EventMarkerEmoji EventMarkerKind = "emoji"
 	EventMarkerColor EventMarkerKind = "color"
 	EventMarkerImage EventMarkerKind = "image"
+
+	EventMarkerNormal EventMarkerSize = "normal"
+	EventMarkerLarge  EventMarkerSize = "large"
 )
 
 type EventMarker struct {
@@ -34,6 +38,14 @@ type EventMarker struct {
 }
 
 var eventMarkerColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+func ValidateEventMarkerSize(size EventMarkerSize) error {
+	if size != EventMarkerNormal && size != EventMarkerLarge {
+		return fmt.Errorf("invalid event marker size: %w", core_errors.ErrInvalidArgument)
+	}
+
+	return nil
+}
 
 func ValidateEventMarker(marker *EventMarker) error {
 	if marker == nil {

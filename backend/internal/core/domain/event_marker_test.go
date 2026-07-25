@@ -56,6 +56,19 @@ func TestValidateEventMarkerRejectsInvalidValues(t *testing.T) {
 	}
 }
 
+func TestValidateEventMarkerSize(t *testing.T) {
+	t.Parallel()
+
+	for _, size := range []EventMarkerSize{EventMarkerNormal, EventMarkerLarge} {
+		if err := ValidateEventMarkerSize(size); err != nil {
+			t.Fatalf("ValidateEventMarkerSize(%q) error = %v", size, err)
+		}
+	}
+	if err := ValidateEventMarkerSize("custom"); !errors.Is(err, core_errors.ErrInvalidArgument) {
+		t.Fatalf("ValidateEventMarkerSize(custom) error = %v, want ErrInvalidArgument", err)
+	}
+}
+
 func TestEventApplyPatchCanClearMarker(t *testing.T) {
 	t.Parallel()
 

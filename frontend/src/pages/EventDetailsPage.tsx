@@ -82,7 +82,7 @@ export function EventDetailsPage() {
           {event.location ? (
             <div className="mt-7 overflow-hidden rounded-2xl border border-line bg-soft">
               <Suspense fallback={<div className="grid h-52 place-items-center text-sm font-bold text-ink/45">Загружаем карту…</div>}>
-                <EventMiniMap location={event.location} />
+                <EventMiniMap location={event.location} marker={event.marker} markerSize={event.marker_size} />
               </Suspense>
             </div>
           ) : null}
