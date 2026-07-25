@@ -16,6 +16,7 @@ type CreateEventRequest struct {
 	Title                  string                       `json:"title"        example:"Sport"`
 	Description            *string                      `json:"description"  example:"Go to football"`
 	Location               *core_http_types.Location    `json:"location"`
+	Marker                 *EventMarkerDTO              `json:"marker"`
 	DateMeeting            *time.Time                   `json:"date_meeting" example:"2026-08-10T18:00:00Z"`
 	AutoDeletePolicy       domain.EventAutoDeletePolicy `json:"auto_delete_policy" example:"never"`
 	AutoDeleteAfterSeconds *int                         `json:"auto_delete_after_seconds" example:"7200"`
@@ -35,6 +36,7 @@ func (r *CreateEventRequest) Validate() error {
 		r.AutoDeletePolicy,
 		r.AutoDeleteAfterSeconds,
 	)
+	event.Marker = markerDomainFromDTO(r.Marker)
 
 	return event.Validate()
 }
@@ -82,6 +84,7 @@ func (h *EventsHTTPHandler) CreateEvent(rw http.ResponseWriter, r *http.Request)
 		request.AutoDeletePolicy,
 		request.AutoDeleteAfterSeconds,
 	)
+	eventDomain.Marker = markerDomainFromDTO(request.Marker)
 
 	eventDomain, err = h.eventsService.CreateEvent(ctx, eventDomain)
 	if err != nil {

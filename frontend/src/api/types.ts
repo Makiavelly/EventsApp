@@ -8,12 +8,18 @@ export type ApiErrorBody = {
   error?: string;
 };
 
+export type EventMarker =
+  | { kind: "emoji"; value: string }
+  | { kind: "color"; value: string }
+  | { kind: "image"; value: string };
+
 export type Event = {
   id: number;
   creator_user_id: number;
   title: string;
   description?: string | null;
   location?: Location | null;
+  marker?: EventMarker | null;
   date_meeting?: string | null;
   auto_delete_policy: AutoDeletePolicy;
   auto_delete_after_seconds?: number | null;
@@ -25,6 +31,7 @@ export type CreateEventPayload = {
   title: string;
   description?: string;
   location?: Location;
+  marker?: EventMarker;
   date_meeting?: string;
   auto_delete_policy: AutoDeletePolicy;
   auto_delete_after_seconds?: number;
@@ -34,6 +41,7 @@ export type PatchEventPayload = {
   title?: string;
   description?: string | null;
   location?: Location | null;
+  marker?: EventMarker | null;
   date_meeting?: string | null;
   auto_delete_policy?: AutoDeletePolicy;
   auto_delete_after_seconds?: number | null;

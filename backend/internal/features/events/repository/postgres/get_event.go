@@ -25,6 +25,8 @@ func (r *EventsRepository) GetEvent(
 		description,
 		ST_Y(location::geometry) AS latitude,
 		ST_X(location::geometry) AS longitude,
+		marker_kind,
+		marker_value,
 		date_meeting,
 		auto_delete_policy,
 		auto_delete_after_seconds
@@ -53,6 +55,8 @@ func (r *EventsRepository) GetEvent(
 		&eventModel.Description,
 		&eventModel.Latitude,
 		&eventModel.Longitude,
+		&eventModel.MarkerKind,
+		&eventModel.MarkerValue,
 		&eventModel.DateMeeting,
 		&eventModel.AutoDeletePolicy,
 		&eventModel.AutoDeleteAfterSeconds,

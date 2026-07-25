@@ -28,10 +28,12 @@ func (r *EventsRepository) PatchEvent(
         	WHEN $3::double precision IS NULL OR $4::double precision IS NULL THEN NULL
         	ELSE ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography
     	END,
-		date_meeting=$5,
-		auto_delete_policy=$6,
-		auto_delete_after_seconds=$7
-	WHERE id=$8
+		marker_kind=$5,
+		marker_value=$6,
+		date_meeting=$7,
+		auto_delete_policy=$8,
+		auto_delete_after_seconds=$9
+	WHERE id=$10
 	RETURNING 
 		id, 
 		creator_id, 
@@ -39,6 +41,8 @@ func (r *EventsRepository) PatchEvent(
 		description, 
 		ST_Y(location::geometry) AS latitude,
     	ST_X(location::geometry) AS longitude,
+		marker_kind,
+		marker_value,
 		date_meeting,
 		auto_delete_policy,
 		auto_delete_after_seconds;
@@ -52,6 +56,12 @@ func (r *EventsRepository) PatchEvent(
 		longitude = &event.Location.Longitude
 		latitude = &event.Location.Latitude
 	}
+	var markerKind *domain.EventMarkerKind
+	var markerValue *string
+	if event.Marker != nil {
+		markerKind = &event.Marker.Kind
+		markerValue = &event.Marker.Value
+	}
 
 	row := r.pool.QueryRow(
 		ctx,
@@ -60,6 +70,8 @@ func (r *EventsRepository) PatchEvent(
 		event.Description,
 		longitude,
 		latitude,
+		markerKind,
+		markerValue,
 		event.DateMeeting,
 		event.AutoDeletePolicy,
 		event.AutoDeleteAfterSeconds,
@@ -75,6 +87,8 @@ func (r *EventsRepository) PatchEvent(
 		&eventModel.Description,
 		&eventModel.Latitude,
 		&eventModel.Longitude,
+		&eventModel.MarkerKind,
+		&eventModel.MarkerValue,
 		&eventModel.DateMeeting,
 		&eventModel.AutoDeletePolicy,
 		&eventModel.AutoDeleteAfterSeconds,

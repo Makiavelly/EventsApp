@@ -27,6 +27,7 @@ export function EditEventPage() {
       title: value.title,
       description: value.description,
       location: value.location,
+      marker: value.marker,
       date_meeting: value.date_meeting,
       auto_delete_policy: value.auto_delete_policy,
       auto_delete_after_seconds: value.auto_delete_after_seconds,

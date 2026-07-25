@@ -17,6 +17,7 @@ export function CreateEventPage() {
       auto_delete_policy: value.auto_delete_policy,
       ...(value.description ? { description: value.description } : {}),
       ...(value.location ? { location: value.location } : {}),
+      ...(value.marker ? { marker: value.marker } : {}),
       ...(value.date_meeting ? { date_meeting: value.date_meeting } : {}),
       ...(value.auto_delete_after_seconds ? { auto_delete_after_seconds: value.auto_delete_after_seconds } : {}),
     };

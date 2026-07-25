@@ -16,6 +16,7 @@ type PatchEventRequest struct {
 	Title                  core_http_types.Nullable[string]                       `json:"title"        swaggertype:"string" example:"Meetup"`
 	Description            core_http_types.Nullable[string]                       `json:"description"  swaggertype:"string" example:"Discuss Go backend development"`
 	Location               core_http_types.Nullable[core_http_types.Location]     `json:"location"     swaggertype:"object"`
+	Marker                 core_http_types.Nullable[EventMarkerDTO]               `json:"marker" swaggertype:"object"`
 	DateMeeting            core_http_types.Nullable[time.Time]                    `json:"date_meeting" swaggertype:"string" format:"date-time" example:"2026-08-10T18:00:00Z"`
 	AutoDeletePolicy       core_http_types.Nullable[domain.EventAutoDeletePolicy] `json:"auto_delete_policy" swaggertype:"string" example:"never"`
 	AutoDeleteAfterSeconds core_http_types.Nullable[int]                          `json:"auto_delete_after_seconds" swaggertype:"integer" example:"7200"`
@@ -89,7 +90,7 @@ func (h *EventsHTTPHandler) PatchEvent(rw http.ResponseWriter, r *http.Request) 
 }
 
 func eventPatchFromRequest(request PatchEventRequest) domain.EventPatch {
-	return domain.NewEventPatchWithPolicy(
+	patch := domain.NewEventPatchWithPolicy(
 		request.Title.ToDomain(),
 		request.Description.ToDomain(),
 		core_http_types.MapNullable(
@@ -102,4 +103,12 @@ func eventPatchFromRequest(request PatchEventRequest) domain.EventPatch {
 		request.AutoDeletePolicy.ToDomain(),
 		request.AutoDeleteAfterSeconds.ToDomain(),
 	)
+	patch.Marker = core_http_types.MapNullable(
+		request.Marker,
+		func(marker EventMarkerDTO) domain.EventMarker {
+			return *markerDomainFromDTO(&marker)
+		},
+	)
+
+	return patch
 }

@@ -13,6 +13,7 @@ type EventDTOResponse struct {
 	Title                  string                       `json:"title"           example:"Sport meetup"`
 	Description            *string                      `json:"description"     example:"Go to football"`
 	Location               *core_http_types.Location    `json:"location"`
+	Marker                 *EventMarkerDTO              `json:"marker"`
 	DateMeeting            *time.Time                   `json:"date_meeting"    example:"2026-08-01T13:52:14Z"`
 	AutoDeletePolicy       domain.EventAutoDeletePolicy `json:"auto_delete_policy" example:"never"`
 	AutoDeleteAfterSeconds *int                         `json:"auto_delete_after_seconds" example:"7200"`
@@ -25,6 +26,7 @@ func eventDTOFromDomain(event domain.Event) EventDTOResponse {
 		Title:                  event.Title,
 		Description:            event.Description,
 		Location:               locationDTOFromDomain(event.Location),
+		Marker:                 markerDTOFromDomain(event.Marker),
 		DateMeeting:            event.DateMeeting,
 		AutoDeletePolicy:       event.AutoDeletePolicy,
 		AutoDeleteAfterSeconds: event.AutoDeleteAfterSeconds,

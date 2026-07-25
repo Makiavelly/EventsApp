@@ -10,6 +10,16 @@ definitions:
     - EventAutoDeleteAtStart
     - EventAutoDeleteAfterInterval
     - EventAutoDeleteNever
+  github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerKind:
+    enum:
+    - emoji
+    - color
+    - image
+    type: string
+    x-enum-varnames:
+    - EventMarkerEmoji
+    - EventMarkerColor
+    - EventMarkerImage
   github_com_Makiavelly_EventsApp_internal_core_transport_http_response.ErrorResponse:
     properties:
       error:
@@ -111,6 +121,8 @@ definitions:
         type: string
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      marker:
+        $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
       title:
         example: Sport
         type: string
@@ -138,6 +150,8 @@ definitions:
         type: integer
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      marker:
+        $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
       title:
         example: Sport meetup
         type: string
@@ -165,8 +179,24 @@ definitions:
         type: integer
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      marker:
+        $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
       title:
         example: Sport meetup
+        type: string
+    type: object
+  internal_features_events_transport_http.EventMarkerDTO:
+    properties:
+      kind:
+        allOf:
+        - $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_domain.EventMarkerKind'
+        enum:
+        - emoji
+        - color
+        - image
+        example: emoji
+      value:
+        example: ⚽
         type: string
     type: object
   internal_features_events_transport_http.GetEventResponse:
@@ -192,6 +222,8 @@ definitions:
         type: integer
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      marker:
+        $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
       title:
         example: Sport meetup
         type: string
@@ -212,6 +244,8 @@ definitions:
         example: Discuss Go backend development
         type: string
       location:
+        type: object
+      marker:
         type: object
       title:
         example: Meetup
@@ -240,6 +274,8 @@ definitions:
         type: integer
       location:
         $ref: '#/definitions/github_com_Makiavelly_EventsApp_internal_core_transport_http_types.Location'
+      marker:
+        $ref: '#/definitions/internal_features_events_transport_http.EventMarkerDTO'
       title:
         example: Sport meetup
         type: string
