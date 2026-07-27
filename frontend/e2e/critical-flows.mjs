@@ -33,8 +33,8 @@ try {
     console.log("event/profile browser flow passed");
     await testAuthRecoveryAndRouteGuard(browser);
     console.log("auth/route-guard browser flow passed");
-    await testMapCardKeyboard(browser);
-    console.log("map-card keyboard browser flow passed");
+    await testMapCardCarousel(browser);
+    console.log("map-card carousel browser flow passed");
   } finally {
     await browser.close();
   }
@@ -338,38 +338,198 @@ async function testAuthRecoveryAndRouteGuard(browser) {
   await context.close();
 }
 
-async function testMapCardKeyboard(browser) {
-  const context = await browser.newContext();
+async function testMapCardCarousel(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+  });
   const page = await context.newPage();
   page.setDefaultTimeout(7_000);
-  await page.route("**/api/v1/participants**", (route) =>
-    json(route, []),
-  );
   await page.goto(`${baseURL}/e2e/map-carousel.html`);
 
-  const cards = page.getByRole("group", { name: /Карточки событий/ });
+  const cards = page.getByRole("group", { name: /Карусель/ });
+  const viewport = page.getByTestId("event-card-carousel-viewport");
   await cards.waitFor();
   await assertAttribute(
     cards,
     "aria-label",
-    "Карточки событий, выбрана 1 из 2",
+    "Карусель из 7 карточек событий",
   );
-  await cards.press("ArrowDown");
-  await assertAttribute(
-    cards,
-    "aria-label",
-    "Карточки событий, выбрана 2 из 2",
+  const carouselHeight = await cards.evaluate((element) => element.getBoundingClientRect().height);
+  assert(carouselHeight <= 844 * 0.5 + 1, `carousel height ${carouselHeight} exceeds half the viewport`);
+  await expectCount(cards.locator("[aria-current]"), 0, "carousel has no active card");
+  const carouselFrame = await cards.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const decoration = getComputedStyle(element, "::before");
+    return {
+      borderWidth: style.borderWidth,
+      outlineWidth: style.outlineWidth,
+      decorationContent: decoration.content,
+    };
+  });
+  assert(carouselFrame.borderWidth === "0px", `carousel border is ${carouselFrame.borderWidth}`);
+  assert(carouselFrame.outlineWidth === "0px", `carousel outline is ${carouselFrame.outlineWidth}`);
+  assert(carouselFrame.decorationContent === "none", "carousel still has a framing decoration");
+
+  const firstCardElement = page.locator("[data-event-card-id='1']");
+  const secondCardElement = page.locator("[data-event-card-id='2']");
+  const initialFirstBox = await firstCardElement.boundingBox();
+  const initialSecondBox = await secondCardElement.boundingBox();
+  assert(initialFirstBox && initialSecondBox, "initial carousel cards are visible");
+  assert(Math.abs(initialFirstBox.x - 12) <= 1, `widest card starts at ${initialFirstBox.x} instead of the map control inset`);
+  assert(Math.abs(initialFirstBox.x + initialFirstBox.width - 378) <= 1, "widest card does not align with the map control width");
+  assert(initialSecondBox.y < initialFirstBox.y + initialFirstBox.height, "cards do not overlap vertically");
+  assert(Math.abs(initialSecondBox.width - initialFirstBox.width) <= 1, "card widths are not equal");
+  assert(Math.abs(initialSecondBox.height - initialFirstBox.height) <= 1, "card heights are not equal");
+  const cardAppearance = await page.locator("[data-event-card-id='1'], [data-event-card-id='2']").evaluateAll((elements) =>
+    elements.map((element) => {
+      const style = getComputedStyle(element);
+      return {
+        borderRadius: style.borderRadius,
+        borderBottomLeftRadius: style.borderBottomLeftRadius,
+        borderBottomRightRadius: style.borderBottomRightRadius,
+        backgroundImage: style.backgroundImage,
+      };
+    }),
   );
-  await cards.press("ArrowUp");
-  await assertAttribute(
-    cards,
-    "aria-label",
-    "Карточки событий, выбрана 1 из 2",
+  assert(cardAppearance[0].borderRadius === cardAppearance[1].borderRadius, "card corner radii are not equal");
+  assert(cardAppearance.every((appearance) =>
+    Number.parseFloat(appearance.borderBottomLeftRadius) > 0
+    && Number.parseFloat(appearance.borderBottomRightRadius) > 0
+  ), "card bottom corners are not rounded");
+  const bottomRadius = Number.parseFloat(cardAppearance[0].borderBottomLeftRadius);
+  const overlap = initialFirstBox.y + initialFirstBox.height - initialSecondBox.y;
+  assert(overlap >= bottomRadius - 1, `card overlap ${overlap}px does not cover the ${bottomRadius}px bottom radius`);
+  assert(cardAppearance[0].backgroundImage !== cardAppearance[1].backgroundImage, "card shades are not varied");
+  const shadeValues = await page.locator("[data-card-shade]").evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute("data-card-shade")),
   );
-  await cards.press("Escape");
+  assert(new Set(shadeValues).size >= 3, "carousel does not provide enough shade variation");
+
+  const secondCard = page.getByRole("button", { name: "Second card" });
+  await assertAttribute(secondCard, "aria-expanded", "false");
+  await secondCard.click();
+  await assertAttribute(secondCard, "aria-expanded", "true");
+  assert(await page.getByText("Second description", { exact: true }).isVisible(), "expanded description is visible");
+  assert(await page.getByText(/2 февр.*2030/).isVisible(), "expanded date is visible");
+  await assertAttribute(page.getByRole("button", { name: "First card" }), "aria-expanded", "false");
+
+  const expandedEndScrollTop = await viewport.evaluate((element) => {
+    const list = element.querySelector(".event-card-carousel__list");
+    const lastCard = list?.lastElementChild;
+    if (!(list instanceof HTMLElement) || !(lastCard instanceof HTMLElement)) return 0;
+    const endScrollTop = list.offsetTop + lastCard.offsetTop + lastCard.offsetHeight - element.clientHeight;
+    element.scrollTop = endScrollTop;
+    element.dispatchEvent(new Event("scroll"));
+    return element.scrollTop;
+  });
+  assert(expandedEndScrollTop > 0, "expanded carousel did not reach its last card");
+  await secondCard.evaluate((element) => element.click());
+  await assertAttribute(secondCard, "aria-expanded", "false");
+  await page.waitForFunction(() => {
+    const viewport = document.querySelector("[data-testid='event-card-carousel-viewport']");
+    const list = viewport?.querySelector(".event-card-carousel__list");
+    const lastCard = list?.lastElementChild;
+    if (!(viewport instanceof HTMLElement) || !(lastCard instanceof HTMLElement)) return false;
+    return Math.abs(lastCard.getBoundingClientRect().bottom - viewport.getBoundingClientRect().bottom) <= 1;
+  });
+
+  const firstCard = page.getByRole("button", { name: "First card" });
+  await firstCard.focus();
+  await page.keyboard.press("ArrowDown");
+  assert(await secondCard.evaluate((element) => element === document.activeElement), "ArrowDown focuses the next equal card");
+  await page.keyboard.press("ArrowDown");
+  const thirdCard = page.getByRole("button", { name: "Third card" });
+  assert(await thirdCard.evaluate((element) => element === document.activeElement), "second ArrowDown advances the carousel");
+  await page.keyboard.press("ArrowUp");
+  assert(await secondCard.evaluate((element) => element === document.activeElement), "ArrowUp moves the carousel back");
+
+  await viewport.evaluate((element) => {
+    element.scrollTop = 36;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await page.waitForFunction(() => {
+    const firstCard = document.querySelector("[data-event-card-id='1']");
+    return firstCard ? Number(getComputedStyle(firstCard).opacity) < 1 : false;
+  });
+  const firstVisual = await page.locator("[data-event-card-id='1']").evaluate((element) => {
+    const style = getComputedStyle(element);
+    const card = element.getBoundingClientRect();
+    const viewport = element.closest("[data-testid='event-card-carousel-viewport']")?.getBoundingClientRect();
+    return {
+      opacity: Number(style.opacity),
+      transform: style.transform,
+      top: card.top,
+      viewportTop: viewport?.top ?? 0,
+      fullyInsideTopEdge: viewport ? card.top >= viewport.top - 1 : false,
+    };
+  });
+  assert(firstVisual.opacity < 1, `top card opacity ${firstVisual.opacity} did not decrease`);
+  assert(firstVisual.transform !== "none", "top card did not shrink while leaving the viewport");
+  assert(firstVisual.fullyInsideTopEdge, "top card was clipped instead of shrinking as a whole");
+  assert(firstVisual.top > firstVisual.viewportTop, "top card did not start fading before reaching the edge");
+
+  await viewport.evaluate((element) => {
+    element.scrollTop = 48;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await page.waitForFunction((previousTop) => {
+    const firstCard = document.querySelector("[data-event-card-id='1']");
+    return firstCard ? firstCard.getBoundingClientRect().top < previousTop : false;
+  }, firstVisual.top);
+
+  await page.keyboard.press("Escape");
   await page.getByText("closed", { exact: true }).waitFor({
     timeout: 2_000,
   });
+
+  const fewPage = await context.newPage();
+  await fewPage.goto(`${baseURL}/e2e/map-carousel.html?few=1`);
+  const fewCards = fewPage.getByRole("group", { name: /Карусель/ });
+  const fewViewport = fewPage.getByTestId("event-card-carousel-viewport");
+  await fewCards.waitFor();
+  const initialFewAlignment = await fewPage.locator("[data-event-card-id='2']").evaluate((element) => {
+    const card = element.getBoundingClientRect();
+    const viewport = element.closest("[data-testid='event-card-carousel-viewport']")?.getBoundingClientRect();
+    return viewport ? Math.abs(card.bottom - viewport.bottom) : Number.POSITIVE_INFINITY;
+  });
+  assert(initialFewAlignment <= 1, `short carousel ends ${initialFewAlignment}px above its bottom edge`);
+
+  const pullState = await fewViewport.evaluate((element) => {
+    element.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    const initialMaximum = element.scrollHeight - element.clientHeight;
+    for (let index = 0; index < 6; index += 1) {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event("scroll"));
+    }
+    return {
+      initialMaximum,
+      viewportHeight: element.clientHeight,
+      scrollTop: element.scrollTop,
+    };
+  });
+  assert(
+    pullState.scrollTop > pullState.initialMaximum + pullState.viewportHeight * 3,
+    "carousel tail stopped growing during a continued pull",
+  );
+  await fewPage.waitForTimeout(250);
+  const heldScrollTop = await fewViewport.evaluate((element) => element.scrollTop);
+  assert(heldScrollTop >= pullState.scrollTop - 1, "carousel snapped back before the user released the gesture");
+  await fewViewport.evaluate((element) => {
+    element.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+  });
+  await fewPage.waitForFunction(() => {
+    const viewport = document.querySelector("[data-testid='event-card-carousel-viewport']");
+    return viewport ? viewport.scrollTop < 1 : false;
+  });
+  const settledFewAlignment = await fewPage.locator("[data-event-card-id='2']").evaluate((element) => {
+    const card = element.getBoundingClientRect();
+    const viewport = element.closest("[data-testid='event-card-carousel-viewport']")?.getBoundingClientRect();
+    return viewport ? Math.abs(card.bottom - viewport.bottom) : Number.POSITIVE_INFINITY;
+  });
+  assert(settledFewAlignment <= 1, "short carousel did not restore the last card to its bottom edge");
+  const resetMaximum = await fewViewport.evaluate((element) => element.scrollHeight - element.clientHeight);
+  assert(resetMaximum <= 97, `dynamic carousel tail did not reset: ${resetMaximum}px`);
+  await fewPage.close();
 
   await context.close();
 }

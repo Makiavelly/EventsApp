@@ -155,7 +155,6 @@ export function EventsPage() {
           events={selectedEvents}
           initialEventId={restoredActiveEventId}
           mapCamera={mapCamera}
-          userLocation={location}
           onClose={closeSelectedEvents}
         />
       ) : null}
