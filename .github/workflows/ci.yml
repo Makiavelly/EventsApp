@@ -10,17 +10,23 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      EVENTSAPP_TEST_POSTGRES_HOST: 127.0.0.1
+      EVENTSAPP_TEST_POSTGRES_PORT: 5432
+      EVENTSAPP_TEST_POSTGRES_USER: eventsapp
+      EVENTSAPP_TEST_POSTGRES_PASSWORD: eventsapp
+      EVENTSAPP_TEST_POSTGRES_DB: eventsapp_test
     services:
       postgres:
         image: postgis/postgis:18-3.6
         env:
           POSTGRES_USER: eventsapp
           POSTGRES_PASSWORD: eventsapp
-          POSTGRES_DB: eventsapp
+          POSTGRES_DB: eventsapp_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -h 127.0.0.1 -U eventsapp -d eventsapp"
+          --health-cmd "pg_isready -h 127.0.0.1 -U eventsapp -d eventsapp_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -33,17 +39,27 @@ jobs:
       - name: Check formatting
         working-directory: backend
         run: test -z "$(gofmt -l .)"
+      - name: Apply migrations to disposable database
+        run: >-
+          docker run --rm --network host
+          -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro"
+          migrate/migrate:v4.19.1
+          -path /migrations
+          -database "postgres://eventsapp:eventsapp@localhost:5432/eventsapp_test?sslmode=disable&search_path=public"
+          up
       - name: Test
         working-directory: backend
         run: go test -race ./...
       - name: Vet
         working-directory: backend
         run: go vet ./...
+      - name: Coverage
+        working-directory: backend
+        run: go test -coverprofile=/tmp/eventsapp-cover.out ./...
       - name: Test migrations up, down and up
         run: |
-          docker run --rm --network host -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro" migrate/migrate:v4.19.1 -path /migrations -database "postgres://eventsapp:eventsapp@localhost:5432/eventsapp?sslmode=disable&search_path=public" up
-          docker run --rm --network host -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro" migrate/migrate:v4.19.1 -path /migrations -database "postgres://eventsapp:eventsapp@localhost:5432/eventsapp?sslmode=disable&search_path=public" down -all
-          docker run --rm --network host -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro" migrate/migrate:v4.19.1 -path /migrations -database "postgres://eventsapp:eventsapp@localhost:5432/eventsapp?sslmode=disable&search_path=public" up
+          docker run --rm --network host -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro" migrate/migrate:v4.19.1 -path /migrations -database "postgres://eventsapp:eventsapp@localhost:5432/eventsapp_test?sslmode=disable&search_path=public" down -all
+          docker run --rm --network host -v "$GITHUB_WORKSPACE/backend/migrations:/migrations:ro" migrate/migrate:v4.19.1 -path /migrations -database "postgres://eventsapp:eventsapp@localhost:5432/eventsapp_test?sslmode=disable&search_path=public" up
       - name: Check generated Swagger
         working-directory: backend
         run: |
@@ -71,3 +87,39 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: npx playwright install --with-deps chromium
+      - name: Browser regression tests
+        working-directory: frontend
+        run: npm run test:e2e
+
+  proxy-smoke:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_USER: eventsapp
+      POSTGRES_PASSWORD: eventsapp
+      POSTGRES_DB: eventsapp_proxy_test
+      AUTH_SECRET: ci-only-secret-that-is-at-least-32-bytes
+      AUTH_REFRESH_COOKIE_SECURE: "false"
+      APP_DOMAIN: events.example.test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configurations
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yaml -f docker-compose.prod.yaml config --quiet
+      - name: Build and start disposable full stack
+        run: docker compose up -d --build frontend
+      - name: Proxy smoke
+        run: sh scripts/proxy_smoke.sh
+      - name: HTTP auth/event/rate-limit regression
+        run: node scripts/http_regression.mjs
+      - name: Container logs
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Remove disposable stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

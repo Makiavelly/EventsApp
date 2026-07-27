@@ -1,4 +1,8 @@
 {$APP_DOMAIN} {
     encode zstd gzip
-    reverse_proxy frontend:8080
+    reverse_proxy frontend:8080 {
+        # Overwrite client-supplied forwarding headers at the public edge.
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+    }
 }

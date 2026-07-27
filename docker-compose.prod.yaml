@@ -10,6 +10,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      eventsapp-edge:
+        ipv4_address: 172.31.255.2
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

@@ -33,7 +33,7 @@ func (h *UsersHTTPHandler) GetUser(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.usersService.GetUser(ctx, userID)
+	user, err := h.usersService.GetPublicUser(ctx, userID)
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to get user")
 

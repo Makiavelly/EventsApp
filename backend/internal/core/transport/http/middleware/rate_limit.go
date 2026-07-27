@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,17 +21,21 @@ type rateLimitEntry struct {
 }
 
 type RateLimiter struct {
-	mu          sync.Mutex
-	entries     map[string]rateLimitEntry
-	maxRequests int
-	window      time.Duration
-	now         func() time.Time
-	trustProxy  bool
+	mu             sync.Mutex
+	entries        map[string]rateLimitEntry
+	maxRequests    int
+	window         time.Duration
+	now            func() time.Time
+	trustedProxies []netip.Prefix
 }
 
 const maxRateLimitEntries = 10_000
 
-func NewRateLimiter(maxRequests int, window time.Duration, trustProxy ...bool) *RateLimiter {
+func NewRateLimiter(
+	maxRequests int,
+	window time.Duration,
+	trustedProxies []netip.Prefix,
+) *RateLimiter {
 	if maxRequests <= 0 {
 		panic("rate limit max requests must be positive")
 	}
@@ -39,13 +44,11 @@ func NewRateLimiter(maxRequests int, window time.Duration, trustProxy ...bool) *
 	}
 
 	limiter := &RateLimiter{
-		entries:     make(map[string]rateLimitEntry),
-		maxRequests: maxRequests,
-		window:      window,
-		now:         time.Now,
-	}
-	if len(trustProxy) > 0 {
-		limiter.trustProxy = trustProxy[0]
+		entries:        make(map[string]rateLimitEntry),
+		maxRequests:    maxRequests,
+		window:         window,
+		now:            time.Now,
+		trustedProxies: append([]netip.Prefix(nil), trustedProxies...),
 	}
 
 	return limiter
@@ -54,7 +57,10 @@ func NewRateLimiter(maxRequests int, window time.Duration, trustProxy ...bool) *
 func (l *RateLimiter) Middleware() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			allowed, retryAfter := l.allow(rateLimitKey(r, l.trustProxy), l.now())
+			allowed, retryAfter := l.allow(
+				rateLimitKey(r, l.trustedProxies),
+				l.now(),
+			)
 			if !allowed {
 				retryAfterSeconds := int(
 					(retryAfter + time.Second - 1) / time.Second,
@@ -135,17 +141,51 @@ func (l *RateLimiter) removeExpired(now time.Time) {
 	}
 }
 
-func rateLimitKey(r *http.Request, trustProxy bool) string {
-	address := ""
-	if trustProxy {
-		address = strings.TrimSpace(r.Header.Get("X-Real-IP"))
+func rateLimitKey(r *http.Request, trustedProxies []netip.Prefix) string {
+	peerAddress := remoteIP(r.RemoteAddr)
+	address := peerAddress
+
+	if isTrustedProxy(peerAddress, trustedProxies) {
+		if forwardedAddress, err := netip.ParseAddr(
+			strings.TrimSpace(r.Header.Get("X-Real-IP")),
+		); err == nil {
+			address = forwardedAddress.Unmap().String()
+		}
 	}
-	if address == "" {
-		address, _, _ = net.SplitHostPort(r.RemoteAddr)
-	}
+
 	if address == "" {
 		address = r.RemoteAddr
 	}
 
 	return address + ":" + r.URL.Path
+}
+
+func remoteIP(remoteAddress string) string {
+	address, _, err := net.SplitHostPort(remoteAddress)
+	if err != nil {
+		address = remoteAddress
+	}
+
+	parsed, err := netip.ParseAddr(strings.TrimSpace(address))
+	if err != nil {
+		return ""
+	}
+
+	return parsed.Unmap().String()
+}
+
+func isTrustedProxy(address string, trustedProxies []netip.Prefix) bool {
+	parsed, err := netip.ParseAddr(address)
+	if err != nil {
+		return false
+	}
+	parsed = parsed.Unmap()
+
+	for _, trustedProxy := range trustedProxies {
+		if trustedProxy.Contains(parsed) {
+			return true
+		}
+	}
+
+	return false
 }

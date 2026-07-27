@@ -2,7 +2,7 @@ import { CalendarDays, LogOut, Mail, Save, Settings2, Trash2, UsersRound } from 
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useEvents } from "../api/queries";
+import { useEvents, useUpdateProfile } from "../api/queries";
 import { useAuth } from "../auth/useAuth";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -16,7 +16,7 @@ import { errorMessage } from "../utils/format";
 type Tab = "created" | "participating";
 
 export function ProfilePage() {
-  const { user, logout, updateProfile, deleteAccount } = useAuth();
+  const { user, logout, syncUser, deleteAccount } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("created");
@@ -28,6 +28,7 @@ export function ProfilePage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const createdQuery = useEvents({ creatorId: user?.id, limit: 500, offset: 0 }, Boolean(user));
   const participatingQuery = useEvents({ participantId: user?.id, limit: 500, offset: 0 }, Boolean(user));
+  const updateProfile = useUpdateProfile(user?.id ?? 0, syncUser);
 
   if (!user) return null;
   const currentUser = user;
@@ -47,9 +48,24 @@ export function ProfilePage() {
     }
     setPendingAction("save");
     try {
-      await updateProfile(payload);
+      await updateProfile.mutateAsync(payload);
       setPassword("");
       setEditing(false);
+      if (password) {
+        try {
+          await logout();
+        } catch {
+          // Password change already revoked every server session. The logout
+          // attempt still cleared the in-memory access token.
+        }
+        navigate("/auth", {
+          replace: true,
+          state: {
+            message: "Пароль изменён. Войдите снова с новым паролем.",
+          },
+        });
+        return;
+      }
       toast({ message: "Профиль обновлён." });
     } catch (error) {
       setActionError(errorMessage(error));

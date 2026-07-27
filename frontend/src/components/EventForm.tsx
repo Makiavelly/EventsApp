@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Check, Clock3, Infinity as InfinityIcon, TimerReset } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type { AutoDeletePolicy, Event, EventMarker, Location } from "../api/types";
 import { Button } from "./Button";
@@ -60,10 +60,21 @@ export function EventForm({ initial, mode = "create", submitLabel, pending, serv
   const [step, setStep] = useState<FormStep>(1);
   const [furthestStep, setFurthestStep] = useState<FormStep>(1);
   const [formError, setFormError] = useState<string>();
+  const submitLockedRef = useRef(false);
+  const pendingObservedRef = useRef(false);
   const lastStep: FormStep = mode === "edit" ? 2 : 4;
   const visibleSteps = mode === "edit" ? steps.slice(0, 2) : steps;
   const dateMax = new Date();
   dateMax.setFullYear(dateMax.getFullYear() + 1);
+
+  useEffect(() => {
+    if (pending) {
+      pendingObservedRef.current = true;
+    } else if (pendingObservedRef.current) {
+      pendingObservedRef.current = false;
+      submitLockedRef.current = false;
+    }
+  }, [pending]);
 
   function validateDetails() {
     const trimmedTitle = title.trim();
@@ -131,6 +142,8 @@ export function EventForm({ initial, mode = "create", submitLabel, pending, serv
       }
     }
 
+    if (submitLockedRef.current) return;
+    submitLockedRef.current = true;
     onSubmit({
       title: details.trimmedTitle,
       description: details.trimmedDescription || null,

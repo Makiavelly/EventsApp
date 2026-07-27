@@ -61,9 +61,6 @@ func corsAllowedOrigins() map[string]struct{} {
 			"http://localhost:5050",
 			"http://localhost:8000",
 			"http://localhost:5173",
-			"http://172.20.247.149:5050",
-			"http://172.20.247.149:5173",
-			"http://172.20.247.149:8080",
 		}, ",")
 	}
 

@@ -181,8 +181,15 @@ export const api = {
   },
 
   async logout() {
-    await request<void>(buildUrl("/auth/logout"), { method: "POST" }, false);
-    setAccessToken(null);
+    try {
+      await request<void>(
+        buildUrl("/auth/logout"),
+        { method: "POST" },
+        false,
+      );
+    } finally {
+      setAccessToken(null);
+    }
   },
 
   getEvents(filters: EventsFilters = {}, signal?: AbortSignal) {

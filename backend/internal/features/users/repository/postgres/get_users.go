@@ -7,12 +7,16 @@ import (
 	"github.com/Makiavelly/EventsApp/internal/core/domain"
 )
 
-func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int) ([]domain.User, error) {
+func (r *UsersRepository) GetPublicUsers(
+	ctx context.Context,
+	limit *int,
+	offset *int,
+) ([]domain.PublicUser, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
 	query := `
-	SELECT id, name, email
+	SELECT id, name
 	FROM eventsapp.users
 	ORDER BY id ASC
 	LIMIT $1
@@ -25,14 +29,13 @@ func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int)
 	}
 	defer rows.Close()
 
-	var userModels []UserModel
+	var userModels []PublicUserModel
 	for rows.Next() {
-		var userModel UserModel
+		var userModel PublicUserModel
 
 		err := rows.Scan(
 			&userModel.ID,
 			&userModel.Name,
-			&userModel.Email,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan users: %w", err)
@@ -44,7 +47,7 @@ func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int)
 		return nil, fmt.Errorf("next rows: %w", err)
 	}
 
-	userDomains := userDomainsFromModels(userModels)
+	userDomains := publicUserDomainsFromModels(userModels)
 
 	return userDomains, nil
 }

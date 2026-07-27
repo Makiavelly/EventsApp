@@ -10,6 +10,11 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:8080:8080"
+    networks:
+      eventsapp-internal:
+        ipv4_address: 172.31.254.2
+      eventsapp-edge:
+        ipv4_address: 172.31.255.3
     restart: unless-stopped
 
   eventsapp:
@@ -51,10 +56,14 @@ services:
       AUTH_REFRESH_COOKIE_SAME_SITE: ${AUTH_REFRESH_COOKIE_SAME_SITE:-strict}
       AUTH_RATE_LIMIT_REQUESTS: ${AUTH_RATE_LIMIT_REQUESTS:-10}
       AUTH_RATE_LIMIT_WINDOW: ${AUTH_RATE_LIMIT_WINDOW:-1m}
-      AUTH_RATE_LIMIT_TRUST_PROXY: "true"
+      # Nginx has a stable address on the private application network.
+      AUTH_RATE_LIMIT_TRUSTED_PROXIES: 172.31.254.2/32
       LOGGER_FOLDER: /app/out/logs
     expose:
       - "5050"
+    networks:
+      eventsapp-internal:
+        ipv4_address: 172.31.254.3
     volumes:
       - ./out/logs:/app/out/logs
     healthcheck:
@@ -74,6 +83,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./out/pgdata:/var/lib/postgresql
+    networks:
+      eventsapp-internal:
+        ipv4_address: 172.31.254.4
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -94,6 +106,9 @@ services:
       - -database
       - postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@eventsapp-postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE:-disable}&sslrootcert=${POSTGRES_SSL_ROOT_CERT:-}&search_path=public
       - up
+    networks:
+      eventsapp-internal:
+        ipv4_address: 172.31.254.5
 
   port-forwarder:
     image: alpine/socat:1.8.0.3
@@ -105,6 +120,9 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:5432:5432"
+    networks:
+      eventsapp-internal:
+        ipv4_address: 172.31.254.6
 
   swagger:
     profiles: ["tools"]
@@ -118,3 +136,15 @@ services:
         ENTRYPOINT ["swag"]
     volumes:
       - ./backend:/code
+
+networks:
+  eventsapp-internal:
+    name: eventsapp-internal
+    ipam:
+      config:
+        - subnet: 172.31.254.0/28
+  eventsapp-edge:
+    name: eventsapp-edge
+    ipam:
+      config:
+        - subnet: 172.31.255.0/28

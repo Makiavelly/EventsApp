@@ -8,19 +8,23 @@ type UserModel struct {
 	Email string
 }
 
+type PublicUserModel struct {
+	ID   int
+	Name string
+}
+
 type UserAccountModel struct {
 	UserModel
 	PasswordHash string
 }
 
-func userDomainsFromModels(users []UserModel) []domain.User {
-	userDomains := make([]domain.User, len(users))
+func publicUserDomainsFromModels(users []PublicUserModel) []domain.PublicUser {
+	userDomains := make([]domain.PublicUser, len(users))
 
 	for i, user := range users {
-		userDomains[i] = domain.NewUser(
+		userDomains[i] = domain.NewPublicUser(
 			user.ID,
 			user.Name,
-			user.Email,
 		)
 	}
 

@@ -7,6 +7,7 @@ import { EventForm } from "../components/EventForm";
 import type { EventFormValue } from "../components/EventForm";
 import { StatusView } from "../components/StatusView";
 import { useToast } from "../toast/useToast";
+import { buildEditableEventPatch } from "../utils/editableEventPatch";
 import { errorMessage } from "../utils/format";
 
 export function EditEventPage() {
@@ -21,14 +22,13 @@ export function EditEventPage() {
   if (eventQuery.isLoading) return <StatusView title="Загружаем событие" tone="loading" />;
   if (eventQuery.isError || !eventQuery.data) return <StatusView title="Не удалось загрузить событие" description={eventQuery.isError ? errorMessage(eventQuery.error) : undefined} tone="error" />;
   if (eventQuery.data.creator_user_id !== user?.id) return <StatusView title="Недостаточно прав" description="Редактировать событие может только его создатель." tone="error" />;
+  const currentEvent = eventQuery.data;
 
   function submit(value: EventFormValue) {
-    const payload: PatchEventPayload = {
-      title: value.title,
-      description: value.description,
-      marker: value.marker,
-      date_meeting: value.date_meeting,
-    };
+    const payload: PatchEventPayload = buildEditableEventPatch(
+      currentEvent,
+      value,
+    );
     updateEvent.mutate(payload, {
       onSuccess: () => {
         toast({ message: "Изменения сохранены." });
