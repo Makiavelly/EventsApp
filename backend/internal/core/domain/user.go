@@ -27,6 +27,11 @@ type User struct {
 	Email string
 }
 
+type PublicUser struct {
+	ID   int
+	Name string
+}
+
 type UserAccount struct {
 	User         User
 	PasswordHash string
@@ -42,6 +47,13 @@ func NewUser(id int, name string, email string) User {
 		ID:    id,
 		Name:  name,
 		Email: email,
+	}
+}
+
+func NewPublicUser(id int, name string) PublicUser {
+	return PublicUser{
+		ID:   id,
+		Name: name,
 	}
 }
 

@@ -45,7 +45,7 @@ func (h *UsersHTTPHandler) DeleteUser(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.usersService.DeleteUser(ctx, userID); err != nil {
+	if err := h.usersService.DeleteUser(ctx, authenticatedUserID, userID); err != nil {
 		responseHandler.ErrorResponse(err, "failed to delete user")
 
 		return

@@ -13,7 +13,7 @@ type PrivateUserDTOResponse struct {
 	Email string `json:"email" example:"alex@mail.ru"`
 }
 
-func userDTOFromDomain(user domain.User) UserDTOResponse {
+func userDTOFromDomain(user domain.PublicUser) UserDTOResponse {
 	return UserDTOResponse{
 		ID:   user.ID,
 		Name: user.Name,
@@ -28,7 +28,7 @@ func privateUserDTOFromDomain(user domain.User) PrivateUserDTOResponse {
 	}
 }
 
-func usersDTOFromDomains(users []domain.User) []UserDTOResponse {
+func usersDTOFromDomains(users []domain.PublicUser) []UserDTOResponse {
 	usersDTO := make([]UserDTOResponse, len(users))
 
 	for i, user := range users {

@@ -70,16 +70,21 @@ func main() {
 	}
 	defer pool.Close()
 
+	authRepository := auth_postgres_repository.NewAuthRepository(pool)
+
 	logger.Debug("initializing feature", zap.String("feature", "users"))
 	usersRepository := users_postgres_repository.NewUsersRepository(pool)
-	usersService := users_service.NewUsersService(usersRepository)
+	usersService := users_service.NewUsersService(
+		usersRepository,
+		authRepository,
+		pool,
+	)
 	usersTransportHTTP := users_transport_http.NewUsersHTTPHandler(usersService)
 
 	logger.Debug("initializing feature", zap.String("feature", "auth"))
 	authConfig := core_auth.NewConfigMust()
 	accessTokenManager := core_auth.NewAccessTokenManager(authConfig)
 	refreshTokenManager := core_auth.NewRefreshTokenManager()
-	authRepository := auth_postgres_repository.NewAuthRepository(pool)
 	authService := auth_service.NewAuthService(
 		usersService,
 		authRepository,
@@ -97,13 +102,13 @@ func main() {
 	authRateLimiter := core_http_middleware.NewRateLimiter(
 		rateLimitConfig.Requests,
 		rateLimitConfig.Window,
-		rateLimitConfig.TrustProxy,
+		rateLimitConfig.TrustedProxies,
 	)
 	go runAuthSessionCleanup(ctx, authService, logger)
 
 	logger.Debug("initializing feature", zap.String("feature", "events"))
 	eventsRepository := events_postgres_repository.NewEventsRepository(pool)
-	eventsService := events_service.NewEventsService(eventsRepository)
+	eventsService := events_service.NewEventsService(eventsRepository, pool)
 	eventsTransportHTTP := events_transport_http.NewEventsHTTPHandler(eventsService)
 	go runExpiredEventCleanup(ctx, eventsService, logger)
 

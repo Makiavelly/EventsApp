@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { LogIn, UserPlus } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -17,10 +17,15 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
   const { user, isLoading, login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const destination = (location.state as { from?: string } | null)?.from ?? "/";
+  const navigationState = location.state as {
+    from?: string;
+    message?: string;
+  } | null;
+  const destination = navigationState?.from ?? "/";
 
   if (!isLoading && user) {
     return <Navigate to={destination} replace />;
@@ -28,6 +33,8 @@ export function AuthPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setError(null);
     setPending(true);
     try {
@@ -40,6 +47,7 @@ export function AuthPage() {
     } catch (submitError) {
       setError(errorMessage(submitError));
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   }
@@ -65,6 +73,14 @@ export function AuthPage() {
         />
 
         <form onSubmit={submit} className="grid gap-4">
+          {navigationState?.message ? (
+            <p
+              role="status"
+              className="rounded-2xl bg-leaf/10 p-3 text-sm font-semibold text-meadow"
+            >
+              {navigationState.message}
+            </p>
+          ) : null}
           {mode === "register" ? (
             <Input label="Имя" name="name" autoComplete="name" required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} />
           ) : null}

@@ -18,21 +18,23 @@ type UsersService interface {
 		ctx context.Context,
 		limit *int,
 		offset *int,
-	) ([]domain.User, error)
+	) ([]domain.PublicUser, error)
 
-	GetUser(
+	GetPublicUser(
 		ctx context.Context,
 		id int,
-	) (domain.User, error)
+	) (domain.PublicUser, error)
 
 	DeleteUser(
 		ctx context.Context,
-		id int,
+		actorUserID int,
+		targetUserID int,
 	) error
 
 	PatchUser(
 		ctx context.Context,
-		id int,
+		actorUserID int,
+		targetUserID int,
 		patch domain.UserPatch,
 	) (domain.User, error)
 }

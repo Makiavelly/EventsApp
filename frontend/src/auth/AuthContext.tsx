@@ -46,13 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.user);
       },
       async logout() {
-        await api.logout();
-        setUser(null);
+        try {
+          await api.logout();
+        } finally {
+          setUser(null);
+        }
       },
-      async updateProfile(payload) {
-        if (!user) throw new Error("Authentication is required");
-        const updatedUser = await api.patchUser(user.id, payload);
-        setUser(updatedUser);
+      syncUser(nextUser) {
+        setUser(nextUser);
       },
       async deleteAccount() {
         if (!user) throw new Error("Authentication is required");

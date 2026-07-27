@@ -7,7 +7,8 @@ import (
 )
 
 type EventsService struct {
-	eventsRepository EventsRepository
+	eventsRepository   EventsRepository
+	transactionManager TransactionManager
 }
 
 type EventsRepository interface {
@@ -34,6 +35,11 @@ type EventsRepository interface {
 		id int,
 	) (domain.Event, error)
 
+	GetEventForUpdate(
+		ctx context.Context,
+		id int,
+	) (domain.Event, error)
+
 	DeleteExpiredEvents(ctx context.Context) (int64, error)
 
 	DeleteEvent(
@@ -48,6 +54,19 @@ type EventsRepository interface {
 	) (domain.Event, error)
 }
 
-func NewEventsService(eventsRepository EventsRepository) *EventsService {
-	return &EventsService{eventsRepository: eventsRepository}
+type TransactionManager interface {
+	WithTransaction(
+		ctx context.Context,
+		operation func(context.Context) error,
+	) error
+}
+
+func NewEventsService(
+	eventsRepository EventsRepository,
+	transactionManager TransactionManager,
+) *EventsService {
+	return &EventsService{
+		eventsRepository:   eventsRepository,
+		transactionManager: transactionManager,
+	}
 }

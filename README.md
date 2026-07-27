@@ -32,6 +32,8 @@ make eventsapp-deploy
 
 Compose применяет миграции, запускает PostgreSQL/PostGIS, Go backend и Nginx со SPA на `http://localhost:8080`. Backend и PostgreSQL не публикуются наружу.
 
+Nginx проксирует `/api`, health и точный `/metrics`; backend доверяет client IP только от явно заданного собственного Nginx. Не добавляйте широкие RFC1918 ranges в `AUTH_RATE_LIMIT_TRUSTED_PROXIES`.
+
 Вспомогательные сервисы не входят в стандартный запуск: DB port-forwarder включается командой `make env-port-forward`, Swagger generator — `make swagger-gen`.
 
 Production-вариант добавляет Caddy с автоматическим TLS. Задайте реальный `APP_DOMAIN`, направьте на сервер DNS и выполните:
@@ -46,9 +48,12 @@ Production override принудительно включает Secure-cookie. �
 
 ```bash
 cd backend && go test -race ./... && go vet ./...
-cd ../frontend && npm ci && npm run lint && npm run test && npm run build
+cd ../frontend && npm ci && npm run playwright:install
+npm run lint && npm run test && npm run build && npm run test:e2e
 ```
 
-Swagger UI: `http://localhost:5050/swagger/` при прямом backend-запуске. Служебные endpoints: `/health/live`, `/health/ready`, `/metrics`.
+Playwright хранит Chromium в стандартном `~/.cache/ms-playwright` и переиспользует его. Install script принудительно предпочитает IPv4 DNS, чтобы не повторять известный сбой CDN по IPv6.
+
+Swagger UI: `http://localhost:5050/swagger/` при прямом backend-запуске. Служебные endpoints: `/health/live`, `/health/ready`, `/metrics`; через full stack они доступны на порту 8080.
 
 Подробная документация находится в `docs/`; актуальный журнал исправлений — `docs/KNOWN_ISSUES.md`.

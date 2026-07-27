@@ -1,10 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import type {
   CreateEventPayload,
   CreateParticipantPayload,
+  EventParticipant,
   EventsFilters,
   PatchEventPayload,
+  PatchUserPayload,
+  PublicUser,
+  User,
 } from "./types";
 
 export const queryKeys = {
@@ -103,5 +112,47 @@ export function useLeaveEvent(eventId: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.participants(eventId) });
       void queryClient.invalidateQueries({ queryKey: ["events"] });
     },
+  });
+}
+
+export function useUpdateProfile(
+  userId: number,
+  onIdentityUpdated: (user: User) => void,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: PatchUserPayload) => api.patchUser(userId, payload),
+    onSuccess: (updatedUser) => {
+      onIdentityUpdated(updatedUser);
+      syncUserCaches(queryClient, updatedUser);
+    },
+  });
+}
+
+export function syncUserCaches(
+  queryClient: QueryClient,
+  updatedUser: User,
+) {
+  const publicUser: PublicUser = {
+    id: updatedUser.id,
+    name: updatedUser.name,
+  };
+  queryClient.setQueryData(queryKeys.user(updatedUser.id), publicUser);
+  queryClient.setQueriesData<EventParticipant[]>(
+    { queryKey: ["participants"] },
+    (participants) =>
+      participants?.map((participant) =>
+        participant.participant_id === updatedUser.id
+          ? { ...participant, name: updatedUser.name }
+          : participant,
+      ),
+  );
+
+  void queryClient.invalidateQueries({
+    queryKey: queryKeys.user(updatedUser.id),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ["participants"],
   });
 }
