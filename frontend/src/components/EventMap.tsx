@@ -18,6 +18,7 @@ import VectorSource from "ol/source/Vector.js";
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style.js";
 import type { Event, EventBounds, Location } from "../api/types";
 import type { MapCameraState } from "../utils/discoverReturnState";
+import { clusterClickTargetZoom } from "../utils/eventClusterInteraction";
 import { eventMarkerRadius, eventMarkerStyle } from "../utils/eventMarkerStyle";
 import { createUserLocationOverlay, syncUserBeaconCollision } from "../utils/userLocationBeacon";
 
@@ -209,6 +210,28 @@ export function EventMap({
       const selected = clusteredFeatures
         .map((feature) => feature.get("event") as Event | undefined)
         .filter((event): event is Event => event !== undefined);
+      const view = map.getView();
+      const currentZoom = view.getZoom() ?? 10;
+      const targetZoom = clusterClickTargetZoom(currentZoom, selected.length);
+      if (targetZoom !== undefined) {
+        const clusterCoordinate = (clicked?.getGeometry() as Point | undefined)?.getCoordinates()
+          ?? browserEvent.coordinate;
+        const target = map.getTargetElement();
+        target.dataset.clusterClickAction = "zooming";
+        target.dataset.clusterTargetZoom = String(targetZoom);
+        view.animate(
+          {
+            center: clusterCoordinate,
+            zoom: targetZoom,
+            duration: reducedMotion() ? 0 : 320,
+          },
+          (completed) => {
+            if (completed) target.dataset.clusterClickAction = "zoomed";
+          },
+        );
+        return;
+      }
+      map.getTargetElement().dataset.clusterClickAction = "select";
       onSelectEventsRef.current(selected);
     });
 

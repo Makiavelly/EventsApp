@@ -648,6 +648,19 @@ async function testEventAndProfileFlows(browser) {
   await page.waitForTimeout(250);
   await page.mouse.click(groupedMarkerPoint.x, groupedMarkerPoint.y);
   await page.waitForFunction(() =>
+    document.querySelector(".base-map")?.getAttribute("data-cluster-click-action") === "zoomed"
+  );
+  await assertAttribute(page.locator(".base-map"), "data-cluster-target-zoom", "16");
+  await assertAttribute(liquidPanel, "data-state", "closed");
+  const centeredClusterPoint = await page.locator(".base-map").evaluate((element) => {
+    const frame = element.getBoundingClientRect();
+    return { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 };
+  });
+  await page.mouse.click(centeredClusterPoint.x, centeredClusterPoint.y);
+  await page.waitForFunction(() =>
+    document.querySelector(".base-map")?.getAttribute("data-cluster-click-action") === "select"
+  );
+  await page.waitForFunction(() =>
     document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
   );
   await assertAttribute(page.getByTestId("liquid-event-carousel"), "aria-label", "Карусель событий, 2");
