@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFORMATION_ZONE_WIDTH_PX,
   liquidPanelPath,
+  HANDLE_TAB_HEIGHT_PX,
   MAX_DEFORMATION_PX,
+  panelHandleRotation,
   panelTarget,
 } from "./liquidPanelMotion";
 
@@ -23,8 +26,28 @@ describe("liquid panel motion", () => {
       width: 390,
     });
 
-    expect(path).toContain(`195 ${700 - (18 * (1 - smoothstep(0.4)) + MAX_DEFORMATION_PX)}`);
+    expect(path).toContain(`195 ${700 - (HANDLE_TAB_HEIGHT_PX * (1 - smoothstep(0.4)) + MAX_DEFORMATION_PX)}`);
     expect(path).not.toContain("NaN");
+  });
+
+  it("uses a wider deformation zone and one smooth symmetric bump", () => {
+    const path = liquidPanelPath({
+      bottomY: 832,
+      deformation: 1,
+      edgeY: 700,
+      progress: 0,
+      reducedMotion: false,
+      width: 448,
+    });
+
+    expect(DEFORMATION_ZONE_WIDTH_PX).toBe(300);
+    expect(path.match(/C /g)).toHaveLength(2);
+  });
+
+  it("rotates the handle through a clamped half turn", () => {
+    expect(panelHandleRotation(-0.2)).toBe(0);
+    expect(panelHandleRotation(0.5)).toBe(90);
+    expect(panelHandleRotation(1.2)).toBe(180);
   });
 
   it("removes strong deformation for reduced motion", () => {

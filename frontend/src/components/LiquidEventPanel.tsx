@@ -20,6 +20,7 @@ import {
   MAX_DEFORMATION_PX,
   MAX_PANEL_HEIGHT_PX,
   OPEN_THRESHOLD,
+  panelHandleRotation,
   panelTarget,
   SPRING_DAMPING,
   SPRING_STIFFNESS,
@@ -110,9 +111,18 @@ export function LiquidEventPanel({
   const baseTabLift = (reducedMotion ? 8 : HANDLE_TAB_HEIGHT_PX) * (1 - smoothstep(progress));
   const deformationLift = reducedMotion ? 0 : MAX_DEFORMATION_PX * deformation;
   const handleTipY = edgeY - baseTabLift - deformationLift;
+  const handleIconOffset = Math.max(0, baseTabLift + deformationLift) * 0.46;
   const contentReveal = clamp((progress - 0.12) / 0.54, 0, 1);
-  const surfaceOpacity = 0.97 - smoothstep(progress) * 0.31;
+  const surfaceOpacity = 1 - smoothstep(progress) * 0.34;
   const surfaceStrokeOpacity = 0.72 - smoothstep(progress) * 0.24;
+  const surfaceHeight = Math.max(1, geometry.navBottom - edgeY);
+  const opaqueMenuOffset = clamp((geometry.navTop - edgeY) / surfaceHeight, 0, 1);
+  const opacityFadeStartOffset = clamp(
+    (geometry.navTop - 72 - edgeY) / surfaceHeight,
+    0,
+    opaqueMenuOffset,
+  );
+  const surfaceGradientId = `${panelId.replace(/[^a-zA-Z0-9_-]/g, "")}-surface-gradient`;
   const path = liquidPanelPath({
     bottomY: geometry.navBottom,
     deformation,
@@ -383,6 +393,8 @@ export function LiquidEventPanel({
 
   const rootStyle = {
     "--liquid-content-reveal": contentReveal,
+    "--liquid-handle-icon-offset": `${handleIconOffset}px`,
+    "--liquid-handle-rotation": `${panelHandleRotation(progress)}deg`,
     "--liquid-surface-opacity": surfaceOpacity,
     "--liquid-surface-stroke-opacity": surfaceStrokeOpacity,
   } as CSSProperties;
@@ -414,7 +426,40 @@ export function LiquidEventPanel({
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <path d={path} />
+          <defs>
+            <linearGradient
+              id={surfaceGradientId}
+              x1="0"
+              x2="0"
+              y1={edgeY}
+              y2={geometry.navBottom}
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                className="liquid-event-panel__surface-stop"
+                offset="0"
+                stopOpacity={surfaceOpacity}
+                data-liquid-surface-stop="panel"
+              />
+              <stop
+                className="liquid-event-panel__surface-stop"
+                offset={opacityFadeStartOffset}
+                stopOpacity={surfaceOpacity}
+              />
+              <stop
+                className="liquid-event-panel__surface-stop"
+                offset={opaqueMenuOffset}
+                stopOpacity="1"
+                data-liquid-surface-stop="menu"
+              />
+              <stop
+                className="liquid-event-panel__surface-stop"
+                offset="1"
+                stopOpacity="1"
+              />
+            </linearGradient>
+          </defs>
+          <path d={path} fill={`url(#${surfaceGradientId})`} />
         </svg>
 
         <section
@@ -457,7 +502,11 @@ export function LiquidEventPanel({
           data-liquid-panel-handle
         >
           <span className="liquid-event-panel__grip" aria-hidden="true">
-            <ChevronUp size={18} strokeWidth={2.4} />
+            <ChevronUp
+              data-liquid-panel-chevron
+              size={20}
+              strokeWidth={2.5}
+            />
           </span>
         </button>
 

@@ -313,14 +313,19 @@ async function testEventAndProfileFlows(browser) {
   const closedPath = await liquidPanel.locator(".liquid-event-panel__surface path").getAttribute("d");
   const closedSurfaceStyles = await liquidPanel.evaluate((element) => {
     const alpha = (color) => {
+      if (!color.startsWith("rgba")) return 1;
       const match = color.match(/,\s*([\d.]+)\)$/);
       return match ? Number(match[1]) : 1;
     };
     const panelPath = element.querySelector(".liquid-event-panel__surface path");
+    const panelStop = element.querySelector("[data-liquid-surface-stop='panel']");
+    const menuStop = element.querySelector("[data-liquid-surface-stop='menu']");
     const handle = element.querySelector(".liquid-event-panel__grip");
     const navigation = element.querySelector(".animated-selector--navigation");
     const frame = element.querySelector(".liquid-event-panel__frame");
     if (!(panelPath instanceof SVGPathElement)
+      || !(panelStop instanceof SVGStopElement)
+      || !(menuStop instanceof SVGStopElement)
       || !(handle instanceof HTMLElement)
       || !(navigation instanceof HTMLElement)
       || !(frame instanceof HTMLElement)) return null;
@@ -328,8 +333,10 @@ async function testEventAndProfileFlows(browser) {
     const frameBox = frame.getBoundingClientRect();
     return {
       handleAlpha: alpha(getComputedStyle(handle).backgroundColor),
+      handleRotation: getComputedStyle(element).getPropertyValue("--liquid-handle-rotation").trim(),
+      menuAlpha: Number(getComputedStyle(menuStop).getPropertyValue("stop-opacity")),
       navigationAlpha: alpha(getComputedStyle(navigation).backgroundColor),
-      panelAlpha: alpha(getComputedStyle(panelPath).fill),
+      panelAlpha: Number(getComputedStyle(panelStop).getPropertyValue("stop-opacity")),
       navigationBorderColor: getComputedStyle(navigation).borderColor,
       navigationBottom: navigation.getBoundingClientRect().bottom - frameBox.top,
       navigationBoxShadow: getComputedStyle(navigation).boxShadow,
@@ -342,9 +349,11 @@ async function testEventAndProfileFlows(browser) {
     "menu bar draws a second surface over the shared liquid frame",
   );
   assert(
-    Math.abs(closedSurfaceStyles.handleAlpha - closedSurfaceStyles.panelAlpha) < 0.03,
-    "closed handle does not match the shared liquid surface opacity",
+    closedSurfaceStyles.handleAlpha === 0,
+    "closed handle still draws a separate surface over the liquid tab",
   );
+  assert(closedSurfaceStyles.handleRotation === "0deg", "closed handle arrow is rotated");
+  assert(closedSurfaceStyles.menuAlpha === 1, "closed menu bar is translucent");
   assert(
     closedSurfaceStyles.navigationBorderColor.endsWith(", 0)"),
     "menu bar draws a second border over the shared liquid frame",
@@ -370,6 +379,10 @@ async function testEventAndProfileFlows(browser) {
   assert(dragScrollLock.overflow === "hidden" && dragScrollLock.touchAction === "none", "page scroll is not locked during vertical drag");
   const shortDragPath = await liquidPanel.locator(".liquid-event-panel__surface path").getAttribute("d");
   assert(shortDragPath !== closedPath, "SVG edge does not deform during drag");
+  const dragRotation = await liquidPanel.evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).getPropertyValue("--liquid-handle-rotation"))
+  );
+  assert(dragRotation > 0 && dragRotation < 180, "handle arrow does not rotate with drag progress");
   await page.waitForTimeout(100);
   await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y - 71);
   await page.mouse.up();
@@ -395,9 +408,12 @@ async function testEventAndProfileFlows(browser) {
   await expectCount(page.getByText("События рядом"), 0, "liquid panel eyebrow is removed");
   await expectCount(page.getByText("Куда отправимся?"), 0, "liquid panel heading is removed");
   const liquidVisualStyles = await liquidPanel.evaluate((element) => {
-    const panelPath = element.querySelector(".liquid-event-panel__surface path");
+    const panelStop = element.querySelector("[data-liquid-surface-stop='panel']");
+    const menuStop = element.querySelector("[data-liquid-surface-stop='menu']");
     const navigation = element.querySelector(".animated-selector--navigation");
-    if (!(panelPath instanceof SVGPathElement) || !(navigation instanceof HTMLElement)) return null;
+    if (!(panelStop instanceof SVGStopElement)
+      || !(menuStop instanceof SVGStopElement)
+      || !(navigation instanceof HTMLElement)) return null;
     const navigationStyle = getComputedStyle(navigation);
     return {
       handleAlpha: (() => {
@@ -406,12 +422,9 @@ async function testEventAndProfileFlows(browser) {
         const match = color.match(/,\s*([\d.]+)\)$/);
         return match ? Number(match[1]) : 1;
       })(),
-      panelAlpha: (() => {
-        const color = getComputedStyle(panelPath).fill;
-        const match = color.match(/,\s*([\d.]+)\)$/);
-        return match ? Number(match[1]) : 1;
-      })(),
-      panelFill: getComputedStyle(panelPath).fill,
+      handleRotation: getComputedStyle(element).getPropertyValue("--liquid-handle-rotation").trim(),
+      menuAlpha: Number(getComputedStyle(menuStop).getPropertyValue("stop-opacity")),
+      panelAlpha: Number(getComputedStyle(panelStop).getPropertyValue("stop-opacity")),
       navigationBackground: navigationStyle.backgroundColor,
       navigationBorderRadius: Number.parseFloat(navigationStyle.borderTopLeftRadius),
       navigationBoxShadow: navigationStyle.boxShadow,
@@ -419,15 +432,13 @@ async function testEventAndProfileFlows(browser) {
     };
   });
   assert(liquidVisualStyles, "liquid panel and menu bar styles are available");
-  assert(liquidVisualStyles.panelFill.startsWith("rgba"), "carousel panel is not translucent");
   assert(
     liquidVisualStyles.panelAlpha < closedSurfaceStyles.panelAlpha - 0.2,
     "liquid surface opacity does not decrease while opening",
   );
-  assert(
-    liquidVisualStyles.handleAlpha < closedSurfaceStyles.handleAlpha - 0.2,
-    "handle opacity does not decrease while opening",
-  );
+  assert(liquidVisualStyles.menuAlpha === 1, "opened menu bar becomes translucent");
+  assert(liquidVisualStyles.handleAlpha === 0, "opened handle draws a separate surface");
+  assert(liquidVisualStyles.handleRotation === "180deg", "opened handle arrow does not complete a half turn");
   assert(liquidVisualStyles.navigationBackground.endsWith(", 0)"), "menu bar draws a separate background");
   assert(liquidVisualStyles.navigationBorderRadius >= 20, "menu bar is not a rounded rectangle");
   assert(liquidVisualStyles.navigationBoxShadow === "none", "menu bar casts a separate shadow");

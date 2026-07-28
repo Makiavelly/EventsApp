@@ -2,16 +2,20 @@ export const CLOSED_MENU_BAR_HEIGHT_PX = 88;
 export const MAX_PANEL_HEIGHT_PX = 620;
 export const OPEN_THRESHOLD = 0.42;
 export const MAX_DEFORMATION_PX = 62;
-export const DEFORMATION_ZONE_WIDTH_PX = 210;
+export const DEFORMATION_ZONE_WIDTH_PX = 300;
 export const SPRING_STIFFNESS = 360;
 export const SPRING_DAMPING = 28;
 export const MIN_FLING_VELOCITY_PX_MS = 0.55;
-export const HANDLE_TAB_HEIGHT_PX = 18;
+export const HANDLE_TAB_HEIGHT_PX = 24;
 
 export function panelTarget(progress: number, velocityY: number): 0 | 1 {
   if (velocityY <= -MIN_FLING_VELOCITY_PX_MS) return 1;
   if (velocityY >= MIN_FLING_VELOCITY_PX_MS) return 0;
   return progress >= OPEN_THRESHOLD ? 1 : 0;
+}
+
+export function panelHandleRotation(progress: number) {
+  return clamp(progress, 0, 1) * 180;
 }
 
 export function liquidPanelPath({
@@ -40,20 +44,17 @@ export function liquidPanelPath({
   const halfWave = waveWidth / 2;
   const left = centerX - halfWave;
   const right = centerX + halfWave;
-  const shoulderY = edgeY - lift * 0.22;
-  const neckY = edgeY - lift * 0.72;
   const tipY = edgeY - lift;
-  const neckHalf = Math.min(42, waveWidth * 0.21);
+  const innerControlX = halfWave * 0.36;
+  const outerControlX = halfWave * 0.58;
 
   return [
     `M 0 ${bottomY - cornerRadius}`,
     `L 0 ${edgeY + cornerRadius}`,
     `Q 0 ${edgeY} ${cornerRadius} ${edgeY}`,
     `L ${left} ${edgeY}`,
-    `C ${left + halfWave * 0.18} ${edgeY} ${centerX - halfWave * 0.42} ${shoulderY} ${centerX - neckHalf} ${neckY}`,
-    `C ${centerX - neckHalf * 0.72} ${tipY} ${centerX - neckHalf * 0.24} ${tipY} ${centerX} ${tipY}`,
-    `C ${centerX + neckHalf * 0.24} ${tipY} ${centerX + neckHalf * 0.72} ${tipY} ${centerX + neckHalf} ${neckY}`,
-    `C ${centerX + halfWave * 0.42} ${shoulderY} ${right - halfWave * 0.18} ${edgeY} ${right} ${edgeY}`,
+    `C ${left + outerControlX} ${edgeY} ${centerX - innerControlX} ${tipY} ${centerX} ${tipY}`,
+    `C ${centerX + innerControlX} ${tipY} ${right - outerControlX} ${edgeY} ${right} ${edgeY}`,
     `L ${width - cornerRadius} ${edgeY}`,
     `Q ${width} ${edgeY} ${width} ${edgeY + cornerRadius}`,
     `L ${width} ${bottomY - cornerRadius}`,
