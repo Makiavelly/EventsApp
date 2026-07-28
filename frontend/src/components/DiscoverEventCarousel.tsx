@@ -2,93 +2,84 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import type {
-  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { Link } from "react-router-dom";
 import type { Event } from "../api/types";
 import type { DiscoverLocationState, MapCameraState } from "../utils/discoverReturnState";
-import { eventCardShades } from "../utils/eventCardShades";
 import { formatDateTime } from "../utils/format";
 
-const COLLAPSED_HEIGHT_PX = 84;
-const FADE_ZONE_PX = 64;
-const OPEN_THRESHOLD = 0.46;
+const CARD_FADE_START_PX = 64;
+const CARD_FADE_END_PX = 8;
+const GESTURE_AXIS_THRESHOLD_PX = 7;
 const END_SETTLE_DELAY_MS = 150;
 const TAIL_RESET_FALLBACK_MS = 900;
 
-type GestureState = {
+type GestureAxis = "pending" | "horizontal" | "vertical";
+
+type CarouselGesture = {
+  axis: GestureAxis;
   moved: boolean;
   pointerId: number;
-  startProgress: number;
   startScrollTop: number;
   startX: number;
   startY: number;
 };
 
 type DiscoverEventCarouselProps = {
-  dismissCompletely?: boolean;
+  activeEventId?: number;
+  enabled: boolean;
   events: Event[];
-  expandedEventId?: number;
   mapCamera?: MapCameraState;
-  onExpandedEventChange: (event?: Event) => void;
-  onFullyCollapsed?: () => void;
-  openOnMount?: boolean;
+  onActiveEventChange: (event: Event) => void;
 };
 
 export function DiscoverEventCarousel({
-  dismissCompletely = false,
+  activeEventId,
+  enabled,
   events,
-  expandedEventId,
   mapCamera,
-  onExpandedEventChange,
-  onFullyCollapsed,
-  openOnMount = false,
+  onActiveEventChange,
 }: DiscoverEventCarouselProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<number, HTMLElement>());
-  const gestureRef = useRef<GestureState>();
-  const removeGestureListenersRef = useRef<() => void>();
+  const gestureRef = useRef<CarouselGesture>();
   const effectsFrameRef = useRef<number>();
-  const collapseTimerRef = useRef<number>();
   const endSettleTimerRef = useRef<number>();
   const tailResetTimerRef = useRef<number>();
-  const progressRef = useRef(0);
   const suppressClickRef = useRef(false);
+  const latestActiveEventIdRef = useRef(activeEventId);
   const [dragging, setDragging] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
-  const shades = useMemo(() => eventCardShades(events), [events]);
-  const collapsedHeight = dismissCompletely ? 0 : COLLAPSED_HEIGHT_PX;
-  const maximumHeight = Math.max(COLLAPSED_HEIGHT_PX, Math.min(500, viewportHeight * 0.5));
-  const movementRange = Math.max(1, maximumHeight - collapsedHeight);
-  const panelHeight = collapsedHeight + movementRange * progress;
+  const [expandedEventId, setExpandedEventId] = useState<number>();
+  const eventsKey = events.map((event) => event.id).join(":");
+  latestActiveEventIdRef.current = activeEventId;
 
   const updateCardEffects = useCallback(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const viewportRect = viewport.getBoundingClientRect();
-    const list = viewport.querySelector<HTMLElement>(".discover-event-carousel__list");
-    if (!list) return;
-    const fadeZone = FADE_ZONE_PX * progressRef.current;
-    const reveal = clamp((progressRef.current - 0.08) / 0.5, 0, 1);
 
-    viewport.querySelectorAll<HTMLElement>("[data-discover-event-card-id]").forEach((card, index) => {
-      const naturalTop = viewportRect.top + list.offsetTop + card.offsetTop - viewport.scrollTop;
-      const fadeProgress = fadeZone < 10
-        ? 0
-        : clamp((viewportRect.top + fadeZone - naturalTop) / Math.max(1, fadeZone - 8), 0, 1);
-      const opacity = (1 - fadeProgress) * (index === 0 ? 1 : reveal);
-      card.style.setProperty("--carousel-card-scale", String(1 - fadeProgress * 0.16));
-      card.style.setProperty("--carousel-card-opacity", String(opacity));
-      card.style.setProperty("--carousel-card-shift", `${fadeProgress * -6}px`);
-      card.style.pointerEvents = opacity < 0.08 ? "none" : "";
+    const viewportRect = viewport.getBoundingClientRect();
+    const list = viewport.querySelector<HTMLElement>(".liquid-vertical-carousel__list");
+    if (!list) return;
+
+    viewport.querySelectorAll<HTMLElement>("[data-liquid-event-id]").forEach((card) => {
+      const naturalCardTop = viewportRect.top + list.offsetTop + card.offsetTop - viewport.scrollTop;
+      const progress = clamp(
+        (viewportRect.top + CARD_FADE_START_PX - naturalCardTop)
+          / (CARD_FADE_START_PX - CARD_FADE_END_PX),
+        0,
+        1,
+      );
+      card.style.setProperty("--carousel-card-scale", String(1 - progress * 0.16));
+      card.style.setProperty("--carousel-card-opacity", String(1 - progress));
+      card.style.setProperty("--carousel-card-shift", `${progress * -6}px`);
+      card.style.pointerEvents = progress >= 0.92 ? "none" : "";
     });
   }, []);
 
@@ -100,15 +91,8 @@ export function DiscoverEventCarousel({
     });
   }, [updateCardEffects]);
 
-  const applyProgress = useCallback((nextProgress: number) => {
-    const boundedProgress = clamp(nextProgress, 0, 1);
-    progressRef.current = boundedProgress;
-    setProgress(boundedProgress);
-    scheduleCardEffects();
-  }, [scheduleCardEffects]);
-
   const resetTail = useCallback(() => {
-    const tail = viewportRef.current?.querySelector<HTMLElement>(".discover-event-carousel__tail");
+    const tail = viewportRef.current?.querySelector<HTMLElement>(".liquid-vertical-carousel__tail");
     if (tail) tail.style.height = "";
     if (tailResetTimerRef.current !== undefined) {
       window.clearTimeout(tailResetTimerRef.current);
@@ -118,7 +102,7 @@ export function DiscoverEventCarousel({
 
   const settleEndPosition = useCallback(() => {
     const viewport = viewportRef.current;
-    if (!viewport || progressRef.current < 1) return;
+    if (!viewport) return;
     const endScrollTop = alignedEndScrollTop(viewport);
     if (viewport.scrollTop <= endScrollTop + 1) {
       resetTail();
@@ -145,7 +129,7 @@ export function DiscoverEventCarousel({
 
   const scrollWithTail = useCallback((requestedScrollTop: number) => {
     const viewport = viewportRef.current;
-    const tail = viewport?.querySelector<HTMLElement>(".discover-event-carousel__tail");
+    const tail = viewport?.querySelector<HTMLElement>(".liquid-vertical-carousel__tail");
     if (!viewport || !tail) return;
 
     const endScrollTop = alignedEndScrollTop(viewport);
@@ -159,101 +143,56 @@ export function DiscoverEventCarousel({
     scheduleCardEffects();
   }, [scheduleCardEffects]);
 
-  const collapseCarousel = useCallback(() => {
-    const viewport = viewportRef.current;
-    if (viewport) {
-      viewport.scrollTo({
-        top: 0,
-        behavior: reducedMotion() ? "auto" : "smooth",
-      });
-    }
+  useEffect(() => {
+    setExpandedEventId(undefined);
     resetTail();
-    applyProgress(0);
-    onExpandedEventChange(undefined);
-    if (!dismissCompletely || !onFullyCollapsed) return;
-    if (collapseTimerRef.current !== undefined) window.clearTimeout(collapseTimerRef.current);
-    collapseTimerRef.current = window.setTimeout(() => {
-      collapseTimerRef.current = undefined;
-      onFullyCollapsed();
-    }, reducedMotion() ? 0 : 320);
-  }, [
-    applyProgress,
-    dismissCompletely,
-    onExpandedEventChange,
-    onFullyCollapsed,
-    resetTail,
-  ]);
-
-  useEffect(() => {
-    const handleResize = () => setViewportHeight(window.innerHeight);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!openOnMount) return;
-    const frame = window.requestAnimationFrame(() => applyProgress(1));
-    return () => window.cancelAnimationFrame(frame);
-  }, [applyProgress, openOnMount]);
-
-  useEffect(() => {
-    const handleNewPointer = (event: PointerEvent) => {
-      suppressClickRef.current = false;
-      const target = event.target;
-      if (target instanceof Element && !target.closest("[data-discover-event-carousel-root]")) {
-        collapseCarousel();
-      }
-    };
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (suppressClickRef.current) {
-        suppressClickRef.current = false;
-        return;
-      }
-      const target = event.target;
-      if (target instanceof Element && target.closest("[data-discover-event-card-id]")) return;
-      collapseCarousel();
-    };
-    document.addEventListener("pointerdown", handleNewPointer, true);
-    document.addEventListener("click", handleOutsideClick);
-    return () => {
-      document.removeEventListener("pointerdown", handleNewPointer, true);
-      document.removeEventListener("click", handleOutsideClick);
-    };
-  }, [collapseCarousel]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(scheduleCardEffects);
-    return () => window.cancelAnimationFrame(frame);
-  }, [events, progress, scheduleCardEffects]);
-
-  useEffect(() => {
-    if (expandedEventId === undefined) return;
-    applyProgress(1);
     const frame = window.requestAnimationFrame(() => {
-      cardRefs.current.get(expandedEventId)?.scrollIntoView({
-        behavior: reducedMotion() ? "auto" : "smooth",
-        block: "nearest",
-      });
-      scheduleCardEffects();
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+      viewport.scrollTop = 0;
+
+      const initialEventId = latestActiveEventIdRef.current;
+      const initialCard = initialEventId === undefined ? undefined : cardRefs.current.get(initialEventId);
+      if (initialCard) {
+        const targetTop = initialCard.getBoundingClientRect().top
+          - viewport.getBoundingClientRect().top
+          - CARD_FADE_START_PX;
+        viewport.scrollTop = Math.min(alignedEndScrollTop(viewport), Math.max(0, targetTop));
+      }
+      updateCardEffects();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [applyProgress, expandedEventId, scheduleCardEffects]);
+  }, [eventsKey, resetTail, updateCardEffects]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const resizeObserver = new ResizeObserver(() => {
       scheduleCardEffects();
-      if (!gestureRef.current) settleEndPosition();
+      if (!gestureRef.current && expandedEventId === undefined) settleEndPosition();
     });
     resizeObserver.observe(viewport);
     cardRefs.current.forEach((card) => resizeObserver.observe(card));
+    scheduleCardEffects();
     return () => resizeObserver.disconnect();
-  }, [events, expandedEventId, scheduleCardEffects, settleEndPosition]);
+  }, [eventsKey, expandedEventId, scheduleCardEffects, settleEndPosition]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (expandedEventId === undefined) {
+        settleEndPosition();
+      } else {
+        cardRefs.current.get(expandedEventId)?.scrollIntoView({
+          behavior: reducedMotion() ? "auto" : "smooth",
+          block: "nearest",
+        });
+      }
+      scheduleCardEffects();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expandedEventId, scheduleCardEffects, settleEndPosition]);
 
   useEffect(() => () => {
-    removeGestureListenersRef.current?.();
-    if (collapseTimerRef.current !== undefined) window.clearTimeout(collapseTimerRef.current);
     if (effectsFrameRef.current !== undefined) window.cancelAnimationFrame(effectsFrameRef.current);
     if (endSettleTimerRef.current !== undefined) window.clearTimeout(endSettleTimerRef.current);
     if (tailResetTimerRef.current !== undefined) window.clearTimeout(tailResetTimerRef.current);
@@ -262,230 +201,219 @@ export function DiscoverEventCarousel({
   if (events.length === 0) return null;
 
   function pointerDown(pointerEvent: ReactPointerEvent<HTMLDivElement>) {
-    if (pointerEvent.button !== 0) return;
+    if (!enabled || pointerEvent.button !== 0) return;
     const viewport = viewportRef.current;
     if (!viewport) return;
-    removeGestureListenersRef.current?.();
+    suppressClickRef.current = false;
     gestureRef.current = {
+      axis: "pending",
       moved: false,
       pointerId: pointerEvent.pointerId,
-      startProgress: progressRef.current,
       startScrollTop: viewport.scrollTop,
       startX: pointerEvent.clientX,
       startY: pointerEvent.clientY,
     };
-    suppressClickRef.current = false;
     if (endSettleTimerRef.current !== undefined) window.clearTimeout(endSettleTimerRef.current);
     if (tailResetTimerRef.current !== undefined) window.clearTimeout(tailResetTimerRef.current);
-    setDragging(true);
-
-    const handleMove = (event: PointerEvent) => pointerMove(event);
-    const handleEnd = (event: PointerEvent) => finishPointer(event);
-    document.addEventListener("pointermove", handleMove, { passive: false });
-    document.addEventListener("pointerup", handleEnd);
-    document.addEventListener("pointercancel", handleEnd);
-    removeGestureListenersRef.current = () => {
-      document.removeEventListener("pointermove", handleMove);
-      document.removeEventListener("pointerup", handleEnd);
-      document.removeEventListener("pointercancel", handleEnd);
-      removeGestureListenersRef.current = undefined;
-    };
+    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
   }
 
-  function pointerMove(pointerEvent: PointerEvent) {
-    const gesture = gestureRef.current;
-    const viewport = viewportRef.current;
-    if (!gesture || !viewport || gesture.pointerId !== pointerEvent.pointerId) return;
-    const deltaX = pointerEvent.clientX - gesture.startX;
-    const deltaY = pointerEvent.clientY - gesture.startY;
-    if (!gesture.moved && Math.hypot(deltaX, deltaY) < 5) return;
-    gesture.moved = true;
-    if (pointerEvent.cancelable) pointerEvent.preventDefault();
-
-    const requestedScrollTop = gesture.startScrollTop - deltaY;
-    if (gesture.startProgress >= 1 && requestedScrollTop >= 0) {
-      scrollWithTail(requestedScrollTop);
-      applyProgress(1);
-      return;
-    }
-
-    if (gesture.startProgress >= 1) {
-      viewport.scrollTop = 0;
-      resetTail();
-      applyProgress(1 + requestedScrollTop / movementRange);
-      return;
-    }
-
-    const nextProgress = gesture.startProgress - deltaY / movementRange;
-    applyProgress(nextProgress);
-    if (nextProgress > 1) {
-      scrollWithTail((nextProgress - 1) * movementRange);
-    }
-  }
-
-  function finishPointer(pointerEvent: PointerEvent) {
+  function pointerMove(pointerEvent: ReactPointerEvent<HTMLDivElement>) {
     const gesture = gestureRef.current;
     if (!gesture || gesture.pointerId !== pointerEvent.pointerId) return;
-    suppressClickRef.current = gesture.moved;
+    const deltaX = pointerEvent.clientX - gesture.startX;
+    const deltaY = pointerEvent.clientY - gesture.startY;
+
+    if (gesture.axis === "pending") {
+      if (Math.hypot(deltaX, deltaY) < GESTURE_AXIS_THRESHOLD_PX) return;
+      gesture.axis = Math.abs(deltaY) >= Math.abs(deltaX) ? "vertical" : "horizontal";
+      gesture.moved = true;
+      suppressClickRef.current = true;
+      if (gesture.axis === "vertical") setDragging(true);
+    }
+    if (gesture.axis !== "vertical") return;
+
+    pointerEvent.preventDefault();
+    scrollWithTail(gesture.startScrollTop - deltaY);
+  }
+
+  function pointerEnd(pointerEvent: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== pointerEvent.pointerId) return;
     gestureRef.current = undefined;
-    removeGestureListenersRef.current?.();
+    if (pointerEvent.currentTarget.hasPointerCapture(pointerEvent.pointerId)) {
+      pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId);
+    }
     setDragging(false);
-    if (!gesture.moved) return;
-    if (progressRef.current === 1) {
-      settleEndPosition();
-      return;
-    }
-    const shouldOpen = progressRef.current >= OPEN_THRESHOLD;
-    applyProgress(shouldOpen ? 1 : 0);
-    if (!shouldOpen) {
-      if (viewportRef.current) viewportRef.current.scrollTop = 0;
-      resetTail();
-      onExpandedEventChange(undefined);
-      if (dismissCompletely && onFullyCollapsed) {
-        if (collapseTimerRef.current !== undefined) window.clearTimeout(collapseTimerRef.current);
-        collapseTimerRef.current = window.setTimeout(() => {
-          collapseTimerRef.current = undefined;
-          onFullyCollapsed();
-        }, reducedMotion() ? 0 : 320);
-      }
-    }
+    if (gesture.axis === "vertical") settleEndPosition();
   }
 
   function wheel(wheelEvent: ReactWheelEvent<HTMLDivElement>) {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    if (progressRef.current < 1) {
-      wheelEvent.preventDefault();
-      applyProgress(progressRef.current + wheelEvent.deltaY / movementRange);
-      return;
-    }
-    if (wheelEvent.deltaY < 0 && viewport.scrollTop <= 0) {
-      wheelEvent.preventDefault();
-      applyProgress(1 + wheelEvent.deltaY / movementRange);
-      resetTail();
-      return;
-    }
-    if (wheelEvent.deltaY > 0 && viewport.scrollTop >= alignedEndScrollTop(viewport) - 1) {
+    const endScrollTop = alignedEndScrollTop(viewport);
+    if (wheelEvent.deltaY > 0 && viewport.scrollTop >= endScrollTop - 1) {
       wheelEvent.preventDefault();
       scrollWithTail(viewport.scrollTop + wheelEvent.deltaY);
     }
     scheduleEndSettle();
   }
 
-  function toggleEvent(event: Event) {
-    if (suppressClickRef.current) return;
-    onExpandedEventChange(expandedEventId === event.id ? undefined : event);
+  function keyDown(keyboardEvent: ReactKeyboardEvent<HTMLDivElement>) {
+    if (keyboardEvent.key !== "ArrowUp" && keyboardEvent.key !== "ArrowDown") return;
+    keyboardEvent.preventDefault();
+    const focusedCard = (document.activeElement as HTMLElement | null)
+      ?.closest<HTMLElement>("[data-liquid-event-id]");
+    const focusedIndex = focusedCard
+      ? events.findIndex((event) => String(event.id) === focusedCard.dataset.liquidEventId)
+      : nearestCardIndex(events, cardRefs.current, viewportRef.current);
+    const direction = keyboardEvent.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = clamp(focusedIndex + direction, 0, events.length - 1);
+    const nextEvent = events[nextIndex];
+    const nextCard = cardRefs.current.get(nextEvent.id);
+    nextCard?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    nextCard?.scrollIntoView({
+      behavior: reducedMotion() ? "auto" : "smooth",
+      block: "nearest",
+    });
+    onActiveEventChange(nextEvent);
   }
 
-  const carouselStyle = {
-    "--discover-carousel-fade-zone": `${FADE_ZONE_PX * progress}px`,
-    "--discover-carousel-progress": progress,
-    height: `${panelHeight}px`,
-  } as CSSProperties;
+  function toggleEvent(event: Event) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    setExpandedEventId((current) => current === event.id ? undefined : event.id);
+    onActiveEventChange(event);
+  }
 
   return (
-    <>
-      <div
-        className="discover-event-carousel__backdrop"
-        style={{
-          background: `rgb(var(--event-card-overlay) / ${0.12 * progress})`,
-          backdropFilter: `blur(${5 * progress}px)`,
-        }}
-        aria-hidden="true"
-        data-testid="discover-carousel-backdrop"
-      />
-      <section
-        className="discover-event-carousel"
-        style={carouselStyle}
-        data-dragging={dragging ? "true" : "false"}
-        data-open={progress >= 0.99 ? "true" : "false"}
-        data-variant={dismissCompletely ? "selection" : "all-events"}
-        data-discover-event-carousel-root
-        aria-label={dismissCompletely
-          ? `Карусель выбранных событий, ${events.length}`
-          : `Карусель ближайших событий, ${events.length}`}
-        data-testid="discover-event-carousel"
-      >
-        <div
-          ref={viewportRef}
-          className="discover-event-carousel__viewport"
-          onPointerDown={pointerDown}
-          onWheel={wheel}
-          onScroll={() => {
-            scheduleCardEffects();
-            if (!gestureRef.current) scheduleEndSettle();
-          }}
-          onTransitionEnd={scheduleCardEffects}
-          data-testid="discover-event-carousel-viewport"
-        >
-          <div className="event-card-carousel__list discover-event-carousel__list">
-            {events.map((event, index) => {
-              const expanded = expandedEventId === event.id;
-              const detailsId = `discover-event-card-details-${event.id}`;
-              return (
-                <article
-                  key={event.id}
-                  ref={(card) => {
-                    if (card) cardRefs.current.set(event.id, card);
-                    else cardRefs.current.delete(event.id);
-                  }}
-                  className="event-card-carousel__card discover-event-carousel__card"
-                  style={index === 0 ? undefined : { "--carousel-card-opacity": 0 } as CSSProperties}
-                  data-discover-event-card-id={event.id}
-                  data-card-shade={shades[index]}
-                  data-expanded={expanded ? "true" : "false"}
-                >
-                  <button
-                    type="button"
-                    className="event-card-carousel__toggle focus-ring"
-                    aria-expanded={expanded}
-                    aria-controls={detailsId}
-                    onPointerDown={() => {
-                      suppressClickRef.current = false;
-                    }}
-                    onClick={() => toggleEvent(event)}
-                  >
-                    <span className="event-card-carousel__title">{event.title}</span>
-                    <ChevronDown className="event-card-carousel__chevron" size={20} aria-hidden="true" />
-                  </button>
+    <div
+      ref={viewportRef}
+      className="liquid-vertical-carousel"
+      data-dragging={dragging ? "true" : "false"}
+      data-testid="liquid-event-carousel-viewport"
+      role="group"
+      aria-label={`Вертикальная карусель из ${events.length} карточек событий`}
+      tabIndex={enabled ? 0 : -1}
+      onClickCapture={(event) => {
+        if (!suppressClickRef.current) return;
+        suppressClickRef.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onKeyDown={keyDown}
+      onPointerDown={pointerDown}
+      onPointerMove={pointerMove}
+      onPointerUp={pointerEnd}
+      onPointerCancel={pointerEnd}
+      onScroll={() => {
+        scheduleCardEffects();
+        if (!gestureRef.current) scheduleEndSettle();
+      }}
+      onWheel={wheel}
+    >
+      <div className="event-card-carousel__list liquid-vertical-carousel__list">
+        {events.map((event) => {
+          const expanded = expandedEventId === event.id;
+          const detailsId = `liquid-event-card-details-${event.id}`;
+          return (
+            <article
+              key={event.id}
+              ref={(card) => {
+                if (card) cardRefs.current.set(event.id, card);
+                else cardRefs.current.delete(event.id);
+              }}
+              className="event-card-carousel__card liquid-vertical-carousel__card"
+              data-liquid-event-id={event.id}
+              data-active={activeEventId === event.id ? "true" : undefined}
+              data-expanded={expanded ? "true" : "false"}
+            >
+              <button
+                type="button"
+                className="event-card-carousel__toggle focus-ring"
+                aria-expanded={expanded}
+                aria-controls={detailsId}
+                tabIndex={enabled ? 0 : -1}
+                onClick={() => toggleEvent(event)}
+              >
+                <span className="event-card-carousel__title">{event.title}</span>
+                <ChevronDown className="event-card-carousel__chevron" size={20} aria-hidden="true" />
+              </button>
 
-                  <div
-                    id={detailsId}
-                    className="event-card-carousel__details"
-                    aria-hidden={expanded ? undefined : "true"}
+              <div
+                id={detailsId}
+                className="event-card-carousel__details"
+                aria-hidden={expanded ? undefined : "true"}
+              >
+                <div className="event-card-carousel__details-inner">
+                  <p className="event-card-carousel__description">
+                    {event.description || "Описание не указано."}
+                  </p>
+                  <p className="event-card-carousel__date">
+                    <CalendarDays size={17} aria-hidden="true" />
+                    <span>{formatDateTime(event.date_meeting)}</span>
+                  </p>
+                  <Link
+                    to={`/events/${event.id}`}
+                    state={{
+                      discover: {
+                        activeEventId: event.id,
+                        events: [event],
+                        ...(mapCamera ? { mapCamera } : {}),
+                      },
+                    } satisfies DiscoverLocationState}
+                    className="event-card-carousel__link focus-ring"
+                    tabIndex={enabled && expanded ? 0 : -1}
                   >
-                    <div className="event-card-carousel__details-inner">
-                      <p className="event-card-carousel__description">
-                        {event.description || "Описание не указано."}
-                      </p>
-                      <p className="event-card-carousel__date">
-                        <CalendarDays size={17} aria-hidden="true" />
-                        <span>{formatDateTime(event.date_meeting)}</span>
-                      </p>
-                      <Link
-                        to={`/events/${event.id}`}
-                        state={{
-                          discover: {
-                            activeEventId: event.id,
-                            events: [event],
-                            ...(mapCamera ? { mapCamera } : {}),
-                          },
-                        } satisfies DiscoverLocationState}
-                        className="event-card-carousel__link focus-ring"
-                        tabIndex={expanded ? 0 : -1}
-                      >
-                        Подробнее
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-          <div className="discover-event-carousel__tail" aria-hidden="true" />
-        </div>
-      </section>
-    </>
+                    Подробнее
+                  </Link>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="liquid-vertical-carousel__tail" aria-hidden="true" />
+    </div>
+  );
+}
+
+function nearestCardIndex(
+  events: Event[],
+  cards: Map<number, HTMLElement>,
+  viewport: HTMLDivElement | null,
+) {
+  if (!viewport) return 0;
+  const viewportTop = viewport.getBoundingClientRect().top + CARD_FADE_START_PX;
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  events.forEach((event, index) => {
+    const card = cards.get(event.id);
+    if (!card) return;
+    const distance = Math.abs(card.getBoundingClientRect().top - viewportTop);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  });
+  return nearestIndex;
+}
+
+function alignedEndScrollTop(viewport: HTMLDivElement) {
+  const list = viewport.querySelector<HTMLElement>(".liquid-vertical-carousel__list");
+  const lastCard = list?.lastElementChild as HTMLElement | null;
+  if (!list || !lastCard) return 0;
+  const bottomOcclusion = Number.parseFloat(getComputedStyle(viewport).paddingBottom) || 0;
+  return Math.max(
+    0,
+    list.offsetTop
+      + lastCard.offsetTop
+      + lastCard.offsetHeight
+      - viewport.clientHeight
+      + bottomOcclusion,
   );
 }
 
@@ -495,11 +423,4 @@ function clamp(value: number, minimum: number, maximum: number) {
 
 function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function alignedEndScrollTop(viewport: HTMLDivElement) {
-  const list = viewport.querySelector<HTMLElement>(".discover-event-carousel__list");
-  const lastCard = list?.lastElementChild as HTMLElement | null;
-  if (!list || !lastCard) return 0;
-  return Math.max(0, list.offsetTop + lastCard.offsetTop + lastCard.offsetHeight - viewport.clientHeight);
 }

@@ -3,8 +3,7 @@ import { MapPin, RefreshCw } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useEvents } from "../api/queries";
 import type { Event, EventBounds, EventsFilters } from "../api/types";
-import { BottomNavigation } from "../components/BottomNavigation";
-import { DiscoverEventCarousel } from "../components/DiscoverEventCarousel";
+import { LiquidEventPanel } from "../components/LiquidEventPanel";
 import { useUserLocation } from "../hooks/useUserLocation";
 import { getDiscoverReturnState } from "../utils/discoverReturnState";
 import type { MapCameraState } from "../utils/discoverReturnState";
@@ -22,11 +21,9 @@ export function EventsPage() {
   const [mapBounds, setMapBounds] = useState<EventBounds>();
   const [mapCamera, setMapCamera] = useState<MapCameraState | undefined>(restoredState?.mapCamera);
   const [expandedEventId, setExpandedEventId] = useState(restoredState?.activeEventId);
-  const [selectedEvents, setSelectedEvents] = useState<Event[]>(
-    restoredEvents.length > 1 ? restoredEvents : [],
-  );
-  const [selectionVersion, setSelectionVersion] = useState(restoredEvents.length > 1 ? 1 : 0);
+  const [selectedEvents, setSelectedEvents] = useState<Event[]>(restoredEvents);
   const [focusRequestVersion, setFocusRequestVersion] = useState(0);
+  const [panelOpenRequest, setPanelOpenRequest] = useState(restoredEvents.length > 0 ? 1 : 0);
   const { location, status: locationStatus, message: locationMessage, retry } = useUserLocation();
 
   const mapFilters = useMemo<EventsFilters>(
@@ -63,9 +60,9 @@ export function EventsPage() {
   }, []);
 
   const selectEvents = useCallback((events: Event[]) => {
-    setExpandedEventId(undefined);
+    setExpandedEventId(events[0]?.id);
     setSelectedEvents(events);
-    setSelectionVersion((current) => current + 1);
+    setPanelOpenRequest((current) => current + 1);
   }, []);
 
   const closeSelectedEvents = useCallback(() => {
@@ -92,7 +89,6 @@ export function EventsPage() {
       <h1 className="sr-only">Карта событий</h1>
 
       <div className="pointer-events-none absolute inset-x-3 top-3 z-40 grid gap-2 sm:inset-x-auto sm:left-3 sm:w-[430px]">
-        <div className="pointer-events-auto"><BottomNavigation placement="inline" /></div>
         {locationStatusView ? <div className="pointer-events-auto">{locationStatusView}</div> : null}
         {queryError ? (
           <p className="pointer-events-auto rounded-2xl bg-clay p-3 text-sm font-semibold text-white shadow-float">
@@ -118,26 +114,15 @@ export function EventsPage() {
         </Suspense>
       </div>
 
-      {selectedEvents.length > 0 ? (
-        <DiscoverEventCarousel
-          key={`selection-${selectionVersion}`}
-          dismissCompletely
-          events={selectedEvents}
-          expandedEventId={expandedEventId}
-          mapCamera={mapCamera}
-          onExpandedEventChange={expandEvent}
-          onFullyCollapsed={closeSelectedEvents}
-          openOnMount
-        />
-      ) : (
-        <DiscoverEventCarousel
-          key="all-events"
-          events={carouselEvents}
-          expandedEventId={expandedEventId}
-          mapCamera={mapCamera}
-          onExpandedEventChange={expandEvent}
-        />
-      )}
+      <LiquidEventPanel
+        events={selectedEvents.length > 0 ? selectedEvents : carouselEvents}
+        initialEventId={expandedEventId}
+        mapCamera={mapCamera}
+        onActiveEventChange={expandEvent}
+        onClosed={closeSelectedEvents}
+        openOnMount={restoredEvents.length > 0}
+        openRequestVersion={panelOpenRequest}
+      />
     </div>
   );
 }

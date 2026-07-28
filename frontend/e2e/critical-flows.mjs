@@ -296,101 +296,264 @@ async function testEventAndProfileFlows(browser) {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseURL}/discover`);
-  const topNavigation = page.getByRole("navigation", { name: "Основная навигация" });
-  await topNavigation.waitFor();
-  await assertAttribute(topNavigation, "data-placement", "inline");
-  await expectCount(topNavigation, 1, "discover has one navigation");
+  const discoverNavigation = page.getByRole("navigation", { name: "Основная навигация" });
+  await discoverNavigation.waitFor();
+  await assertAttribute(discoverNavigation, "data-placement", "inline");
+  await expectCount(discoverNavigation, 1, "discover has one navigation");
   await expectCount(page.getByRole("button", { name: "Карта" }), 0, "map/list control is removed");
   await expectCount(page.getByRole("button", { name: "Список" }), 0, "list control is removed");
 
-  const discoverCarousel = page.getByTestId("discover-event-carousel");
-  const discoverViewport = page.getByTestId("discover-event-carousel-viewport");
-  await discoverCarousel.waitFor();
-  const collapsedFrame = await discoverCarousel.evaluate((element) => {
-    const frame = element.getBoundingClientRect();
-    return { height: frame.height, bottom: frame.bottom };
+  const liquidPanel = page.getByTestId("liquid-event-panel");
+  const discoverHandle = page.getByRole("button", { name: "Открыть карусель событий" });
+  const handleControl = page.locator("[data-liquid-panel-handle]");
+  await liquidPanel.waitFor();
+  await discoverHandle.waitFor();
+  await assertAttribute(liquidPanel, "data-state", "closed");
+  await assertAttribute(discoverHandle, "aria-expanded", "false");
+  const closedPath = await liquidPanel.locator(".liquid-event-panel__surface path").getAttribute("d");
+  const closedSurfaceStyles = await liquidPanel.evaluate((element) => {
+    const alpha = (color) => {
+      const match = color.match(/,\s*([\d.]+)\)$/);
+      return match ? Number(match[1]) : 1;
+    };
+    const panelPath = element.querySelector(".liquid-event-panel__surface path");
+    const handle = element.querySelector(".liquid-event-panel__grip");
+    const navigation = element.querySelector(".animated-selector--navigation");
+    const frame = element.querySelector(".liquid-event-panel__frame");
+    if (!(panelPath instanceof SVGPathElement)
+      || !(handle instanceof HTMLElement)
+      || !(navigation instanceof HTMLElement)
+      || !(frame instanceof HTMLElement)) return null;
+    const pathBox = panelPath.getBBox();
+    const frameBox = frame.getBoundingClientRect();
+    return {
+      handleAlpha: alpha(getComputedStyle(handle).backgroundColor),
+      navigationAlpha: alpha(getComputedStyle(navigation).backgroundColor),
+      panelAlpha: alpha(getComputedStyle(panelPath).fill),
+      navigationBorderColor: getComputedStyle(navigation).borderColor,
+      navigationBottom: navigation.getBoundingClientRect().bottom - frameBox.top,
+      navigationBoxShadow: getComputedStyle(navigation).boxShadow,
+      surfaceBottom: pathBox.y + pathBox.height,
+    };
   });
-  const collapsedHeight = collapsedFrame.height;
-  assert(Math.abs(collapsedHeight - 84) <= 1, `discover carousel collapsed height is ${collapsedHeight}`);
-  assert(Math.abs(collapsedFrame.bottom - 844) <= 1, `discover carousel ends at ${collapsedFrame.bottom} instead of the screen edge`);
-  const discoverTitles = await page.locator("[data-discover-event-card-id]").evaluateAll((cards) =>
-    cards.map((card) => ({
-      id: card.getAttribute("data-discover-event-card-id"),
-      opacity: Number(getComputedStyle(card).opacity),
-    })),
+  assert(closedSurfaceStyles, "closed liquid surface styles are available");
+  assert(
+    closedSurfaceStyles.navigationAlpha === 0,
+    "menu bar draws a second surface over the shared liquid frame",
   );
-  assert(discoverTitles[0]?.id === "1", "nearest event is the first carousel card");
-  assert(discoverTitles[1]?.opacity === 0, "only the first event is visible while collapsed");
-
-  const nearestButton = page.getByRole("button", { name: "Existing event" });
-  const nearestBox = await nearestButton.boundingBox();
-  assert(nearestBox, "nearest event card has a bounding box");
-  await page.mouse.move(nearestBox.x + nearestBox.width / 2, nearestBox.y + nearestBox.height / 2);
+  assert(
+    Math.abs(closedSurfaceStyles.handleAlpha - closedSurfaceStyles.panelAlpha) < 0.03,
+    "closed handle does not match the shared liquid surface opacity",
+  );
+  assert(
+    closedSurfaceStyles.navigationBorderColor.endsWith(", 0)"),
+    "menu bar draws a second border over the shared liquid frame",
+  );
+  assert(
+    closedSurfaceStyles.navigationBoxShadow === "none",
+    "menu bar casts a shadow onto the shared handle frame",
+  );
+  assert(
+    Math.abs(closedSurfaceStyles.surfaceBottom - closedSurfaceStyles.navigationBottom) < 1,
+    "shared liquid surface continues below the menu bar",
+  );
+  const initialHandleBox = await handleControl.boundingBox();
+  assert(initialHandleBox, "discover menu handle has a bounding box");
+  await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y + initialHandleBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(nearestBox.x + nearestBox.width / 2, nearestBox.y - 220, { steps: 8 });
-  const draggedHeight = await discoverCarousel.evaluate((element) => element.getBoundingClientRect().height);
-  assert(draggedHeight > collapsedHeight + 150, "carousel follows the upward drag");
+  await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y - 70, { steps: 10 });
+  await assertAttribute(liquidPanel, "data-state", "dragging");
+  const dragScrollLock = await page.evaluate(() => ({
+    overflow: document.body.style.overflow,
+    touchAction: document.body.style.touchAction,
+  }));
+  assert(dragScrollLock.overflow === "hidden" && dragScrollLock.touchAction === "none", "page scroll is not locked during vertical drag");
+  const shortDragPath = await liquidPanel.locator(".liquid-event-panel__surface path").getAttribute("d");
+  assert(shortDragPath !== closedPath, "SVG edge does not deform during drag");
+  await page.waitForTimeout(100);
+  await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y - 71);
   await page.mouse.up();
-  await assertAttribute(discoverCarousel, "data-open", "true");
-  const openBackdrop = await page.getByTestId("discover-carousel-backdrop").evaluate((element) => {
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
+  );
+  const releasedScrollLock = await page.evaluate(() => document.body.style.touchAction);
+  assert(releasedScrollLock === "", "page scroll lock remains after drag release");
+
+  const reopenedHandleBox = await handleControl.boundingBox();
+  assert(reopenedHandleBox, "discover handle remains available after the cancelled drag");
+  await page.mouse.move(reopenedHandleBox.x + reopenedHandleBox.width / 2, reopenedHandleBox.y + reopenedHandleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(reopenedHandleBox.x + reopenedHandleBox.width / 2, reopenedHandleBox.y - 300, { steps: 14 });
+  const pulledHandleBox = await handleControl.boundingBox();
+  assert(pulledHandleBox && pulledHandleBox.y < reopenedHandleBox.y - 150, "panel handle does not follow the pointer upward");
+  await page.mouse.up();
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
+  );
+  const closeHandle = page.getByRole("button", { name: "Закрыть карусель событий" });
+  await assertAttribute(closeHandle, "aria-expanded", "true");
+  await expectCount(page.getByText("События рядом"), 0, "liquid panel eyebrow is removed");
+  await expectCount(page.getByText("Куда отправимся?"), 0, "liquid panel heading is removed");
+  const liquidVisualStyles = await liquidPanel.evaluate((element) => {
+    const panelPath = element.querySelector(".liquid-event-panel__surface path");
+    const navigation = element.querySelector(".animated-selector--navigation");
+    if (!(panelPath instanceof SVGPathElement) || !(navigation instanceof HTMLElement)) return null;
+    const navigationStyle = getComputedStyle(navigation);
+    return {
+      handleAlpha: (() => {
+        const handle = element.querySelector(".liquid-event-panel__grip");
+        const color = handle instanceof HTMLElement ? getComputedStyle(handle).backgroundColor : "";
+        const match = color.match(/,\s*([\d.]+)\)$/);
+        return match ? Number(match[1]) : 1;
+      })(),
+      panelAlpha: (() => {
+        const color = getComputedStyle(panelPath).fill;
+        const match = color.match(/,\s*([\d.]+)\)$/);
+        return match ? Number(match[1]) : 1;
+      })(),
+      panelFill: getComputedStyle(panelPath).fill,
+      navigationBackground: navigationStyle.backgroundColor,
+      navigationBorderRadius: Number.parseFloat(navigationStyle.borderTopLeftRadius),
+      navigationBoxShadow: navigationStyle.boxShadow,
+      navigationWidth: navigation.getBoundingClientRect().width,
+    };
+  });
+  assert(liquidVisualStyles, "liquid panel and menu bar styles are available");
+  assert(liquidVisualStyles.panelFill.startsWith("rgba"), "carousel panel is not translucent");
+  assert(
+    liquidVisualStyles.panelAlpha < closedSurfaceStyles.panelAlpha - 0.2,
+    "liquid surface opacity does not decrease while opening",
+  );
+  assert(
+    liquidVisualStyles.handleAlpha < closedSurfaceStyles.handleAlpha - 0.2,
+    "handle opacity does not decrease while opening",
+  );
+  assert(liquidVisualStyles.navigationBackground.endsWith(", 0)"), "menu bar draws a separate background");
+  assert(liquidVisualStyles.navigationBorderRadius >= 20, "menu bar is not a rounded rectangle");
+  assert(liquidVisualStyles.navigationBoxShadow === "none", "menu bar casts a separate shadow");
+  assert(liquidVisualStyles.navigationWidth < 390, "menu bar no longer has the standard page inset");
+  const openBackdrop = await page.getByTestId("liquid-event-panel-backdrop").evaluate((element) => {
     const style = getComputedStyle(element);
     return { backdropFilter: style.backdropFilter, maskImage: style.maskImage };
   });
   assert(openBackdrop.backdropFilter !== "none", "map background is blurred while carousel is open");
   assert(openBackdrop.maskImage.includes("gradient"), "blur does not leave a smoothly revealed marker area");
-
-  await page.mouse.click(380, 350);
-  await page.waitForFunction(() => {
-    const carousel = document.querySelector("[data-testid='discover-event-carousel'][data-variant='all-events']");
-    return carousel?.getAttribute("data-open") === "false"
-      && Math.abs(carousel.getBoundingClientRect().height - 84) <= 1;
-  });
+  await page.setViewportSize({ width: 320, height: 700 });
   await page.waitForTimeout(100);
-  const reopenedNearestBox = await nearestButton.boundingBox();
-  assert(reopenedNearestBox, "nearest event card remains available after the first outside click");
-  await page.mouse.move(reopenedNearestBox.x + reopenedNearestBox.width / 2, reopenedNearestBox.y + reopenedNearestBox.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(reopenedNearestBox.x + reopenedNearestBox.width / 2, reopenedNearestBox.y - 220, { steps: 8 });
-  await page.mouse.up();
-  await assertAttribute(discoverCarousel, "data-open", "true");
+  const narrowOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  assert(narrowOverflow <= 0, `liquid panel causes ${narrowOverflow}px horizontal overflow at 320px`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(100);
 
-  const fartherButton = page.getByRole("button", { name: "Farther event" });
-  await page.waitForFunction(() => {
-    const lastCard = document.querySelector("[data-discover-event-card-id='3']");
-    const carousel = document.querySelector("[data-testid='discover-event-carousel']");
-    if (!(lastCard instanceof HTMLElement) || !(carousel instanceof HTMLElement)) return false;
-    return Math.abs(lastCard.getBoundingClientRect().bottom - carousel.getBoundingClientRect().bottom) <= 1;
-  });
-  const initialTailMaximum = await discoverViewport.evaluate((element) => element.scrollHeight - element.clientHeight);
-  const fartherBox = await fartherButton.boundingBox();
-  assert(fartherBox, "last event card has a bounding box");
-  await page.mouse.move(fartherBox.x + fartherBox.width / 2, fartherBox.y + fartherBox.height / 2);
+  const carouselViewport = page.getByTestId("liquid-event-carousel-viewport");
+  await expectCount(page.locator("[data-liquid-event-id]"), 3, "vertical event carousel cards");
+  const carouselBox = await carouselViewport.boundingBox();
+  assert(carouselBox, "vertical event carousel has a bounding box");
+  const initialCarouselScroll = await carouselViewport.evaluate((element) => element.scrollTop);
+  await page.mouse.move(carouselBox.x + carouselBox.width * 0.5, carouselBox.y + carouselBox.height * 0.78);
   await page.mouse.down();
-  await page.mouse.move(fartherBox.x + fartherBox.width / 2, fartherBox.y - 500, { steps: 12 });
-  const pulledTailScrollTop = await discoverViewport.evaluate((element) => element.scrollTop);
-  assert(
-    pulledTailScrollTop > initialTailMaximum + 300,
-    "all-events carousel tail stopped at the last card",
-  );
+  await page.mouse.move(carouselBox.x + carouselBox.width * 0.5, carouselBox.y + carouselBox.height * 0.12, { steps: 12 });
+  const heldCarouselState = await carouselViewport.evaluate((element) => {
+    const list = element.querySelector(".liquid-vertical-carousel__list");
+    const tail = element.querySelector(".liquid-vertical-carousel__tail");
+    const lastCard = list?.lastElementChild;
+    if (!(list instanceof HTMLElement) || !(tail instanceof HTMLElement) || !(lastCard instanceof HTMLElement)) return null;
+    return {
+      naturalEnd: Math.max(
+        0,
+        list.offsetTop
+          + lastCard.offsetTop
+          + lastCard.offsetHeight
+          - element.clientHeight
+          + (Number.parseFloat(getComputedStyle(element).paddingBottom) || 0),
+      ),
+      scrollTop: element.scrollTop,
+      tailHeight: tail.offsetHeight,
+    };
+  });
+  assert(heldCarouselState, "vertical carousel end geometry is available");
+  assert(heldCarouselState.scrollTop > initialCarouselScroll + 80, "vertical carousel does not follow an upward pointer drag");
+  assert(heldCarouselState.scrollTop > heldCarouselState.naturalEnd, "carousel tail does not extend beyond the last card while held");
+  assert(heldCarouselState.tailHeight > 0, "carousel tail is not created during end pull");
   await page.waitForTimeout(250);
-  const heldTailScrollTop = await discoverViewport.evaluate((element) => element.scrollTop);
-  assert(heldTailScrollTop >= pulledTailScrollTop - 1, "all-events carousel settled before pointer release");
+  const heldScrollAfterDelay = await carouselViewport.evaluate((element) => element.scrollTop);
+  assert(Math.abs(heldScrollAfterDelay - heldCarouselState.scrollTop) < 2, "carousel rewinds before the pointer is released");
   await page.mouse.up();
   await page.waitForFunction(() => {
-    const lastCard = document.querySelector("[data-discover-event-card-id='3']");
-    const carousel = document.querySelector("[data-testid='discover-event-carousel']");
-    if (!(lastCard instanceof HTMLElement) || !(carousel instanceof HTMLElement)) return false;
-    return Math.abs(lastCard.getBoundingClientRect().bottom - carousel.getBoundingClientRect().bottom) <= 1;
+    const viewport = document.querySelector("[data-testid='liquid-event-carousel-viewport']");
+    const list = viewport?.querySelector(".liquid-vertical-carousel__list");
+    const tail = viewport?.querySelector(".liquid-vertical-carousel__tail");
+    const lastCard = list?.lastElementChild;
+    if (!(viewport instanceof HTMLElement)
+      || !(list instanceof HTMLElement)
+      || !(tail instanceof HTMLElement)
+      || !(lastCard instanceof HTMLElement)) return false;
+    const naturalEnd = Math.max(
+      0,
+      list.offsetTop
+        + lastCard.offsetTop
+        + lastCard.offsetHeight
+        - viewport.clientHeight
+        + (Number.parseFloat(getComputedStyle(viewport).paddingBottom) || 0),
+    );
+    return Math.abs(viewport.scrollTop - naturalEnd) < 2 && tail.offsetHeight === 0;
   });
-  await page.waitForFunction(() => {
-    const viewport = document.querySelector("[data-testid='discover-event-carousel-viewport']");
-    return viewport instanceof HTMLElement && viewport.scrollHeight - viewport.clientHeight <= 1;
-  });
+  const settledCarouselScroll = await carouselViewport.evaluate((element) => element.scrollTop);
+  await page.waitForTimeout(250);
+  const stableCarouselScroll = await carouselViewport.evaluate((element) => element.scrollTop);
+  assert(Math.abs(stableCarouselScroll - settledCarouselScroll) < 2, "carousel rewinds after settling on the last event");
+  const liquidCardStyles = await page.locator("[data-liquid-event-id]").evaluateAll((cards) => cards.map((card) => {
+    const style = getComputedStyle(card);
+    return { background: style.backgroundColor, boxShadow: style.boxShadow };
+  }));
+  assert(new Set(liquidCardStyles.map((style) => style.background)).size === 1, "liquid carousel cards use different colors");
+  assert(liquidCardStyles.every((style) => style.boxShadow !== "none"), "liquid carousel cards do not cast shadows");
+  const [lastLiquidCardBox, liquidNavigationBox, liquidCarouselBox] = await Promise.all([
+    page.locator("[data-liquid-event-id]").last().boundingBox(),
+    liquidPanel.locator(".animated-selector--navigation").boundingBox(),
+    carouselViewport.boundingBox(),
+  ]);
+  assert(lastLiquidCardBox && liquidNavigationBox && liquidCarouselBox, "carousel and menu bar geometry is available");
+  assert(
+    Math.abs(liquidCarouselBox.y + liquidCarouselBox.height - liquidNavigationBox.y) <= 1,
+    "carousel does not end at the menu bar top edge",
+  );
+  assert(
+    lastLiquidCardBox.y + lastLiquidCardBox.height <= liquidNavigationBox.y,
+    "lower carousel card continues behind the menu bar",
+  );
+  await assertAttribute(liquidPanel, "data-state", "opened");
 
-  await nearestButton.click();
-  await assertAttribute(nearestButton, "aria-expanded", "true");
-  assert(await page.getByText("Описание не указано.", { exact: true }).isVisible(), "persistent carousel opens event details");
+  const openedHandleBox = await closeHandle.boundingBox();
+  assert(openedHandleBox, "opened panel handle has a bounding box");
+  await page.mouse.move(openedHandleBox.x + openedHandleBox.width / 2, openedHandleBox.y + openedHandleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(openedHandleBox.x + openedHandleBox.width / 2, openedHandleBox.y + 400, { steps: 14 });
+  await page.mouse.up();
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
+  );
 
+  await discoverHandle.click();
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
+  );
+  await page.getByRole("button", { name: "Закрыть карусель событий" }).focus();
+  await page.keyboard.press("Space");
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
+  );
+  await discoverHandle.focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
+  );
+
+  await carouselViewport.focus();
+  await page.keyboard.press("ArrowUp");
+  await page.waitForFunction(() =>
+    document.querySelector(".event-map")?.getAttribute("data-focused-event-id") === "1"
+  );
   await page.waitForFunction(() => {
     const map = document.querySelector(".base-map");
     return map instanceof HTMLElement && map.dataset.focusedMarkerX && map.dataset.focusedMarkerY;
@@ -402,77 +565,39 @@ async function testEventAndProfileFlows(browser) {
       y: frame.top + Number(element.dataset.focusedMarkerY),
     };
   });
-  await page.mouse.click(380, 350);
-  await page.waitForFunction(() => {
-    const carousel = document.querySelector("[data-testid='discover-event-carousel'][data-variant='all-events']");
-    const viewport = document.querySelector("[data-testid='discover-event-carousel-viewport']");
-    return carousel?.getAttribute("data-open") === "false"
-      && Math.abs(carousel.getBoundingClientRect().height - 84) <= 1
-      && viewport instanceof HTMLElement
-      && viewport.scrollTop <= 1;
-  });
-  await assertAttribute(nearestButton, "aria-expanded", "false");
+  await page.mouse.click(385, 350);
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
+  );
 
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(250);
   await page.mouse.click(groupedMarkerPoint.x, groupedMarkerPoint.y);
-  const selectionCarousel = page.locator("[data-testid='discover-event-carousel'][data-variant='selection']");
-  await selectionCarousel.waitFor();
-  await assertAttribute(selectionCarousel, "aria-label", "Карусель выбранных событий, 2");
-  await assertAttribute(selectionCarousel, "data-open", "true");
-
-  const selectedEventButton = page.getByRole("button", { name: "Existing event" });
-  await selectedEventButton.click();
-  await assertAttribute(selectedEventButton, "aria-expanded", "true");
   await page.waitForFunction(() =>
-    document.querySelector(".event-map")?.getAttribute("data-focused-event-id") === "1"
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
+  );
+  await assertAttribute(page.getByTestId("liquid-event-carousel"), "aria-label", "Карусель событий, 2");
+  await expectCount(page.locator("[data-liquid-event-id]"), 2, "selected vertical carousel cards");
+  await page.getByTestId("liquid-event-panel-backdrop").click({ position: { x: 2, y: 120 } });
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
   );
 
-  await page.mouse.click(380, 350);
-  await selectionCarousel.waitFor({ state: "detached" });
-  const restoredAllEventsCarousel = page.locator("[data-testid='discover-event-carousel'][data-variant='all-events']");
-  await restoredAllEventsCarousel.waitFor();
-  const restoredAllEventsHeight = await restoredAllEventsCarousel.evaluate((element) => element.getBoundingClientRect().height);
-  assert(Math.abs(restoredAllEventsHeight - 84) <= 1, "all-events carousel did not return collapsed after marker selection");
+  await discoverNavigation.getByRole("link", { name: "Профиль" }).click();
+  await page.waitForURL("**/profile");
+  await expectCount(discoverHandle, 0, "discover handle is absent outside search");
 
-  const restoredNearestButton = page.getByRole("button", { name: "Existing event" });
-  const restoredNearestBox = await restoredNearestButton.boundingBox();
-  assert(restoredNearestBox, "restored nearest event card has a bounding box");
-  await page.mouse.move(restoredNearestBox.x + restoredNearestBox.width / 2, restoredNearestBox.y + restoredNearestBox.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(restoredNearestBox.x + restoredNearestBox.width / 2, restoredNearestBox.y - 220, { steps: 8 });
-  await page.mouse.up();
-  await assertAttribute(restoredAllEventsCarousel, "data-open", "true");
-  const restoredFartherButton = page.getByRole("button", { name: "Farther event" });
-  await restoredFartherButton.click();
-  await page.waitForFunction(() =>
-    document.querySelector(".event-map")?.getAttribute("data-focused-event-id") === "3"
-  );
-  await page.waitForFunction(() => {
-    const map = document.querySelector(".base-map");
-    return map instanceof HTMLElement && map.dataset.focusedMarkerX && map.dataset.focusedMarkerY;
-  });
-  const singleMarkerPoint = await page.locator(".base-map").evaluate((element) => {
-    const frame = element.getBoundingClientRect();
-    return {
-      x: frame.left + Number(element.dataset.focusedMarkerX),
-      y: frame.top + Number(element.dataset.focusedMarkerY),
-    };
-  });
-  await page.mouse.click(380, 350);
-  await page.waitForFunction(() => {
-    const carousel = document.querySelector("[data-testid='discover-event-carousel'][data-variant='all-events']");
-    return carousel?.getAttribute("data-open") === "false";
-  });
-  await page.waitForTimeout(350);
-  await page.mouse.click(singleMarkerPoint.x, singleMarkerPoint.y);
-  const singleSelectionCarousel = page.locator("[data-testid='discover-event-carousel'][data-variant='selection']");
-  await singleSelectionCarousel.waitFor();
-  await assertAttribute(singleSelectionCarousel, "aria-label", "Карусель выбранных событий, 1");
-  await assertAttribute(singleSelectionCarousel, "data-open", "true");
-  await page.mouse.click(380, 350);
-  await singleSelectionCarousel.waitFor({ state: "detached" });
+  await page.getByRole("navigation", { name: "Основная навигация" })
+    .getByRole("link", { name: "Поиск" })
+    .click();
+  await page.waitForURL("**/discover");
+  const returnedDiscoverHandle = page.getByRole("button", { name: "Открыть карусель событий" });
+  await returnedDiscoverHandle.waitFor();
+  await assertAttribute(returnedDiscoverHandle, "aria-expanded", "false");
 
-  await page.goto(`${baseURL}/profile`);
+  await page.getByRole("navigation", { name: "Основная навигация" })
+    .getByRole("link", { name: "Профиль" })
+    .click();
+  await page.waitForURL("**/profile");
   await page.getByRole("button", { name: "Настройки" }).click();
   await page.getByLabel("Новый пароль").fill("new-secret");
   await page.getByRole("button", { name: "Сохранить" }).click();
