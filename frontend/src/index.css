@@ -35,6 +35,7 @@
   --event-card-glow: 247 184 146;
   --event-card-shadow: 94 56 39;
   --event-card-overlay: 62 43 34;
+  --event-card-flat: 248 226 210;
   color: rgb(var(--ink));
   background: rgb(var(--cream));
   font-family: ui-rounded, "Nunito Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -73,6 +74,7 @@
   --event-card-glow: 143 80 57;
   --event-card-shadow: 25 14 10;
   --event-card-overlay: 20 12 9;
+  --event-card-flat: 73 49 40;
 }
 
 * {
@@ -274,8 +276,8 @@ a {
   to { opacity: 1; }
 }
 
-@keyframes event-card-stack-in {
-  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+@keyframes event-card-carousel-in {
+  from { opacity: 0; transform: translateY(2.5rem); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -284,19 +286,20 @@ a {
   100% { opacity: 0; }
 }
 
-@keyframes event-card-stack-dismiss {
-  0%, 34% { opacity: 1; transform: translateY(0) scale(1); }
-  44% { opacity: 1; transform: translateY(0.5rem) scale(0.985); }
-  100% { opacity: 0; transform: translateY(calc(60dvh + 50%)) scale(0.9); }
+@keyframes event-card-carousel-dismiss {
+  0% { opacity: 1; transform: translateY(0); }
+  28% { opacity: 1; transform: translateY(0.5rem); }
+  100% { opacity: 0; transform: translateY(calc(52dvh + 100%)); }
 }
 
 .map-event-overlay {
   position: fixed;
   z-index: 60;
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: max(4.5rem, env(safe-area-inset-top)) 1.25rem max(6rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: max(3.5rem, env(safe-area-inset-top)) 0.5rem max(5.75rem, env(safe-area-inset-bottom));
   background: rgb(var(--event-card-overlay) / 0.16);
   backdrop-filter: blur(2px);
   animation: map-event-overlay-in 180ms ease-out;
@@ -307,82 +310,228 @@ a {
   animation: map-event-overlay-out 620ms ease-in forwards;
 }
 
-.event-card-stack {
+.event-card-carousel {
   position: relative;
-  width: min(19.5rem, calc(100vw - 3rem));
-  height: min(27rem, calc(100dvh - 10rem));
-  min-height: 20rem;
-  touch-action: none;
-  animation: event-card-stack-in 320ms cubic-bezier(0.2, 1.12, 0.3, 1);
-}
-
-.event-card-stack[data-single="true"] {
-  height: min(25rem, calc(100dvh - 10rem));
-}
-
-.event-card-stack[data-closing="true"] {
-  animation: event-card-stack-dismiss 620ms cubic-bezier(0.45, 0.04, 0.78, 0.34) forwards;
-}
-
-.event-card-stack__card {
-  position: absolute;
-  inset: 0;
+  width: min(27.375rem, calc(100vw - 1rem));
+  height: min(50dvh, 30rem);
+  min-height: min(16rem, calc(100dvh - 10rem));
   overflow: hidden;
+  border: 0;
+  outline: 0;
+  animation: event-card-carousel-in 360ms cubic-bezier(0.2, 1.12, 0.3, 1);
+}
+
+.event-card-carousel[data-closing="true"] {
+  animation: event-card-carousel-dismiss 620ms cubic-bezier(0.45, 0.04, 0.78, 0.34) forwards;
+}
+
+.event-card-carousel__viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 4rem 0.25rem 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  scroll-padding-block: 4rem 0;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.event-card-carousel__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.event-card-carousel__list {
+  display: grid;
+  position: relative;
+  min-height: 100%;
+  align-content: end;
+  gap: 0;
+}
+
+.event-card-carousel__tail {
+  height: 6rem;
+  pointer-events: none;
+}
+
+.event-card-carousel__card {
+  --carousel-card-opacity: 1;
+  --carousel-card-scale: 1;
+  --carousel-card-shift: 0px;
+  --carousel-card-start: rgb(var(--event-card-start));
+  --carousel-card-end: rgb(var(--event-card-end));
+  --carousel-card-glow: rgb(var(--event-card-glow));
+  position: relative;
+  width: 100%;
+  justify-self: center;
+  overflow: clip;
   border: 1px solid rgb(var(--event-card-line));
-  border-radius: 2rem;
+  border-radius: 1.25rem;
   background:
-    radial-gradient(circle at 84% 8%, rgb(var(--event-card-glow) / 0.36), transparent 12rem),
-    linear-gradient(155deg, rgb(var(--event-card-start)), rgb(var(--event-card-end)) 68%);
-  box-shadow: 0 24px 55px rgb(var(--event-card-shadow) / 0.32), inset 0 1px 0 rgb(var(--event-card-inset));
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--carousel-card-glow) 38%, transparent), transparent 9rem),
+    linear-gradient(145deg, var(--carousel-card-start), var(--carousel-card-end) 74%);
+  box-shadow:
+    0 5px 10px -7px rgb(var(--event-card-shadow) / 0.34),
+    inset 0 1px 0 rgb(var(--event-card-inset));
   color: rgb(var(--event-card-ink));
-  cursor: grab;
-  transform-origin: bottom right;
+  opacity: var(--carousel-card-opacity);
+  transform: translateY(var(--carousel-card-shift)) scale(var(--carousel-card-scale));
+  transform-origin: center bottom;
   transition:
-    transform 420ms cubic-bezier(0.2, 1.12, 0.3, 1),
-    opacity 260ms ease;
+    transform 60ms linear,
+    opacity 60ms linear,
+    box-shadow 260ms ease;
   will-change: transform, opacity;
 }
 
-.event-card-stack[data-closing="true"] .event-card-stack__card:not([data-stack-depth="-1"]) {
-  opacity: 1 !important;
-  transform: translate3d(0, 0, 0) rotate(0) scale(1) !important;
+.event-card-carousel__card + .event-card-carousel__card {
+  margin-top: -1.25rem;
+}
+
+.event-card-carousel__card[data-card-shade="1"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 64%, rgb(var(--peach)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 72%, rgb(var(--surface)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 54%, rgb(var(--accent)));
+}
+
+.event-card-carousel__card[data-card-shade="2"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 68%, rgb(var(--surface)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 58%, rgb(var(--peach)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 48%, rgb(var(--peach)));
+}
+
+.event-card-carousel__card[data-card-shade="3"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 62%, rgb(var(--soft)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 70%, rgb(var(--cocoa)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 56%, rgb(var(--cocoa)));
+}
+
+.event-card-carousel__card[data-card-shade="4"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 55%, rgb(var(--cream)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 64%, rgb(var(--soft)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 42%, rgb(var(--surface)));
+}
+
+.event-card-carousel__card[data-card-shade="5"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 63%, rgb(var(--accent)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 72%, rgb(var(--surface)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 38%, rgb(var(--accent)));
+}
+
+.event-card-carousel__card[data-card-shade="6"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 58%, rgb(var(--surface)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 65%, rgb(var(--cocoa)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 44%, rgb(var(--cocoa)));
+}
+
+.event-card-carousel__card[data-card-shade="7"] {
+  --carousel-card-start: color-mix(in srgb, rgb(var(--event-card-start)) 66%, rgb(var(--peach)));
+  --carousel-card-end: color-mix(in srgb, rgb(var(--event-card-end)) 54%, rgb(var(--soft)));
+  --carousel-card-glow: color-mix(in srgb, rgb(var(--event-card-glow)) 46%, rgb(var(--peach)));
+}
+
+.event-card-carousel__card[data-expanded="true"] {
+  box-shadow:
+    0 8px 16px -9px rgb(var(--event-card-shadow) / 0.42),
+    inset 0 1px 0 rgb(var(--event-card-inset));
+}
+
+.event-card-carousel__toggle {
+  display: flex;
+  width: 100%;
+  min-height: 5.25rem;
+  align-items: center;
+  gap: 0.85rem;
+  border: 0;
+  background: transparent;
+  padding: 1rem 1.15rem;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.event-card-carousel__title {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+
+.event-card-carousel__chevron {
+  flex: none;
+  color: rgb(var(--event-card-muted) / 0.82);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.event-card-carousel__card[data-expanded="true"] .event-card-carousel__chevron {
+  transform: rotate(180deg);
+}
+
+.event-card-carousel__details {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
   transition:
-    transform 210ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 160ms ease !important;
+    grid-template-rows 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease;
 }
 
-.event-card-stack[data-closing="true"] .event-card-stack__card[data-stack-depth="-1"] {
-  opacity: 0 !important;
+.event-card-carousel__card[data-expanded="true"] .event-card-carousel__details {
+  grid-template-rows: 1fr;
+  opacity: 1;
 }
 
-.event-card-stack__card[data-active="true"]:active {
-  cursor: grabbing;
+.event-card-carousel__details-inner {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 1.15rem;
 }
 
-.event-card-stack__distance {
-  background: rgb(var(--event-card-panel));
-  color: rgb(var(--event-card-muted) / 0.92);
+.event-card-carousel__card[data-expanded="true"] .event-card-carousel__details-inner {
+  padding-bottom: 1.15rem;
 }
 
-.event-card-stack__feature {
-  border: 1px solid rgb(var(--event-card-line));
-  background:
-    radial-gradient(circle at 72% 18%, rgb(var(--event-card-glow) / 0.28), transparent 8rem),
-    rgb(var(--event-card-panel));
-  color: rgb(var(--event-card-muted) / 0.96);
-}
-
-.event-card-stack__description {
+.event-card-carousel__description {
+  margin: 0;
   color: rgb(var(--event-card-soft-text));
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
-.event-card-stack__details {
+.event-card-carousel__date {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.85rem 0 0;
+  color: rgb(var(--event-card-muted) / 0.94);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.event-card-carousel__link {
+  display: flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.9rem;
   border: 1px solid rgb(var(--event-card-line));
+  border-radius: 1rem;
   background: rgb(var(--event-card-panel));
   color: rgb(var(--event-card-ink));
+  font-size: 0.82rem;
+  font-weight: 900;
+  transition: background-color 180ms ease;
 }
 
-.event-card-stack__details:hover {
+.event-card-carousel__link:hover {
   background: rgb(var(--event-card-panel-hover));
 }
 
@@ -578,6 +727,229 @@ a {
   border-radius: 1.75rem;
 }
 
+.liquid-event-panel {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.liquid-event-panel__backdrop {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: rgb(var(--event-card-overlay) / 0.16);
+  backdrop-filter: blur(5px);
+  cursor: default;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0 10%, black 52% 100%);
+  mask-image: linear-gradient(to bottom, transparent 0 10%, black 52% 100%);
+}
+
+.liquid-event-panel[data-state="dragging"] .liquid-event-panel__backdrop,
+.liquid-event-panel[data-state="opening"] .liquid-event-panel__backdrop,
+.liquid-event-panel[data-state="opened"] .liquid-event-panel__backdrop {
+  pointer-events: auto;
+}
+
+.liquid-event-panel__frame {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: min(calc(100vw - 1.5rem), 28rem);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.liquid-event-panel__surface {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 -12px 22px rgb(var(--shadow) / 0.14));
+  pointer-events: none;
+}
+
+.liquid-event-panel__surface path {
+  stroke: rgb(var(--selector-border) / var(--liquid-surface-stroke-opacity));
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.liquid-event-panel__surface-stop {
+  stop-color: rgb(var(--selector-track));
+}
+
+.liquid-event-panel__content {
+  position: absolute;
+  z-index: 2;
+  right: 0.45rem;
+  bottom: 0;
+  left: 0.45rem;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  opacity: var(--liquid-content-reveal);
+  transform: translateY(calc((1 - var(--liquid-content-reveal)) * 1.25rem));
+  pointer-events: none;
+  will-change: top, opacity, transform;
+}
+
+.liquid-event-panel[data-state="opened"] .liquid-event-panel__content {
+  pointer-events: auto;
+}
+
+.liquid-event-panel__empty {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  margin: 0;
+  color: rgb(var(--event-card-muted));
+  font-weight: 800;
+}
+
+.liquid-vertical-carousel {
+  --liquid-carousel-bottom-occlusion: 0.5rem;
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 3.6rem 0.25rem var(--liquid-carousel-bottom-occlusion);
+  border-radius: 1.55rem;
+  cursor: grab;
+  outline: 0;
+  overscroll-behavior: contain;
+  scroll-padding-block: 3.6rem var(--liquid-carousel-bottom-occlusion);
+  scrollbar-width: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.liquid-vertical-carousel[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+.liquid-vertical-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.liquid-vertical-carousel__list.event-card-carousel__list {
+  min-height: 100%;
+  align-content: end;
+}
+
+.liquid-vertical-carousel__card {
+  --carousel-card-start: rgb(var(--event-card-flat));
+  --carousel-card-end: rgb(var(--event-card-flat));
+  --carousel-card-glow: rgb(var(--event-card-flat));
+  background: rgb(var(--event-card-flat));
+  box-shadow:
+    0 -9px 18px -12px rgb(var(--event-card-shadow) / 0.58),
+    0 8px 16px -11px rgb(var(--event-card-shadow) / 0.5),
+    inset 0 1px 0 rgb(var(--event-card-inset));
+  user-select: text;
+}
+
+.liquid-vertical-carousel__card[data-active="true"] {
+  box-shadow:
+    0 -10px 20px -12px rgb(var(--event-card-shadow) / 0.64),
+    0 10px 20px -12px rgb(var(--event-card-shadow) / 0.56),
+    inset 0 1px 0 rgb(var(--event-card-inset));
+}
+
+.liquid-vertical-carousel__tail {
+  height: 0;
+  pointer-events: none;
+}
+
+.liquid-event-panel__handle {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  display: grid;
+  width: min(13.125rem, 56vw);
+  height: 4.25rem;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(var(--selector-active-ink));
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.liquid-event-panel__handle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.liquid-event-panel[data-state="dragging"] .liquid-event-panel__handle {
+  cursor: grabbing;
+}
+
+.liquid-event-panel__grip {
+  display: grid;
+  width: 3rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(var(--selector-muted-ink) / 0.82);
+  opacity: calc(1 - var(--liquid-absorption-progress));
+  transform: scale(calc(1 - var(--liquid-absorption-progress) * 0.28));
+  transition: color 180ms ease;
+  will-change: opacity, transform;
+}
+
+.liquid-event-panel__grip svg {
+  transform:
+    translateY(var(--liquid-handle-icon-offset))
+    rotate(var(--liquid-handle-rotation));
+  transform-origin: center;
+  will-change: transform;
+}
+
+.liquid-event-panel__handle:hover .liquid-event-panel__grip,
+.liquid-event-panel__handle:focus-visible .liquid-event-panel__grip {
+  color: rgb(var(--selector-active-ink));
+}
+
+.liquid-event-panel__handle:focus-visible {
+  outline: none;
+}
+
+.liquid-event-panel__handle:focus-visible .liquid-event-panel__grip {
+  outline: 2px solid rgb(var(--accent-strong));
+  outline-offset: 4px;
+}
+
+.liquid-event-panel__navigation {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: 0;
+  height: 4.375rem;
+  padding-inline: 0;
+  pointer-events: none;
+}
+
+.bottom-navigation[data-surface="liquid"] .animated-selector--navigation {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 .animated-selector__indicator {
   position: absolute;
   z-index: 0;
@@ -742,19 +1114,28 @@ a {
     transition-duration: 120ms, 160ms !important;
   }
 
-  .event-card-stack__card {
-    transition-duration: 200ms, 160ms !important;
-    transition-timing-function: ease-out, ease-out !important;
+  .event-card-carousel__card {
+    transition-duration: 100ms, 80ms, 140ms !important;
+    transition-timing-function: linear, linear, ease-out !important;
   }
 
   .map-event-overlay,
-  .event-card-stack {
+  .event-card-carousel {
     animation-duration: 160ms !important;
   }
 
   .map-event-overlay[data-closing="true"],
-  .event-card-stack[data-closing="true"] {
+  .event-card-carousel[data-closing="true"] {
     animation-duration: 360ms !important;
+  }
+
+  .event-card-carousel__viewport {
+    scroll-behavior: auto;
+  }
+
+  .event-card-carousel__chevron,
+  .event-card-carousel__details {
+    transition-duration: 140ms !important;
   }
 
   .radius-picker__fill {
@@ -765,9 +1146,6 @@ a {
     transition-duration: 80ms, 100ms, 100ms !important;
   }
 
-  .event-card-stack[data-closing="true"] .event-card-stack__card:not([data-stack-depth="-1"]) {
-    transition-duration: 140ms, 110ms !important;
-  }
 }
 
 @layer components {

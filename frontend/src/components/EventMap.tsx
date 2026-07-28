@@ -6,7 +6,6 @@ import OpenLayersMap from "ol/Map.js";
 import Overlay from "ol/Overlay.js";
 import View from "ol/View.js";
 import { defaults as defaultControls } from "ol/control/defaults.js";
-import { createEmpty, extendCoordinate } from "ol/extent.js";
 import Point from "ol/geom/Point.js";
 import { defaults as defaultInteractions } from "ol/interaction/defaults.js";
 import TileLayer from "ol/layer/Tile.js";
@@ -19,12 +18,15 @@ import VectorSource from "ol/source/Vector.js";
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from "ol/style.js";
 import type { Event, EventBounds, Location } from "../api/types";
 import type { MapCameraState } from "../utils/discoverReturnState";
+import { clusterClickTargetZoom } from "../utils/eventClusterInteraction";
 import { eventMarkerRadius, eventMarkerStyle } from "../utils/eventMarkerStyle";
 import { createUserLocationOverlay, syncUserBeaconCollision } from "../utils/userLocationBeacon";
 
 type EventMapProps = {
   fullScreen?: boolean;
   events: Event[];
+  focusedEvent?: Event;
+  focusRequestVersion?: number;
   initialCamera?: MapCameraState;
   isLoading: boolean;
   userLocation?: Location;
@@ -66,8 +68,14 @@ function visibleBounds(map: OpenLayersMap): EventBounds | undefined {
   };
 }
 
-function clusterStyle(feature: FeatureLike) {
+function clusterStyle(feature: FeatureLike, focusedEventId?: number) {
   const features = feature.get("features") as Feature<Point>[] | undefined;
+  const focusedFeature = focusedEventId === undefined
+    ? undefined
+    : features?.find((candidate) => (candidate.get("event") as Event | undefined)?.id === focusedEventId);
+  if (focusedFeature) {
+    return focusedFeature.get("markerStyle") as Style | Style[] | undefined;
+  }
   const count = features?.length ?? 1;
   const clustered = count > 1;
   if (!clustered) {
@@ -104,15 +112,28 @@ function syncMapUserBeacon(
   );
 }
 
-export function EventMap({ fullScreen = false, events, initialCamera, isLoading, userLocation, onBoundsChange, onCameraChange, onSelectEvents }: EventMapProps) {
+export function EventMap({
+  fullScreen = false,
+  events,
+  focusedEvent,
+  focusRequestVersion,
+  initialCamera,
+  isLoading,
+  userLocation,
+  onBoundsChange,
+  onCameraChange,
+  onSelectEvents,
+}: EventMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OpenLayersMap | null>(null);
+  const eventLayerRef = useRef<VectorLayer | null>(null);
   const sourceRef = useRef(new VectorSource<Feature<Point>>());
   const userOverlayRef = useRef<Overlay | null>(null);
   const initialCameraRef = useRef(initialCamera);
   const onBoundsChangeRef = useRef(onBoundsChange);
   const onCameraChangeRef = useRef(onCameraChange);
   const onSelectEventsRef = useRef(onSelectEvents);
+  const focusedEventIdRef = useRef(focusedEvent?.id);
   const centeredOnUserRef = useRef(Boolean(initialCamera));
   const mappableEvents = useMemo(() => events.filter(isMappable), [events]);
 
@@ -125,6 +146,11 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
 
     const clusterSource = new Cluster({ distance: 46, minDistance: 14, source: sourceRef.current });
     const restoredCamera = initialCameraRef.current;
+    const eventLayer = new VectorLayer({
+      source: clusterSource,
+      style: (feature) => clusterStyle(feature, focusedEventIdRef.current),
+    });
+    eventLayerRef.current = eventLayer;
     const map = new OpenLayersMap({
       target: containerRef.current,
       controls: defaultControls({ rotate: false, attributionOptions: { collapsible: true } }),
@@ -137,7 +163,7 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
             url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
           }),
         }),
-        new VectorLayer({ source: clusterSource, style: clusterStyle }),
+        eventLayer,
       ],
       view: new View({
         center: restoredCamera ? [...restoredCamera.center] : FALLBACK_CENTER,
@@ -174,28 +200,39 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
       map.getTargetElement().style.cursor = map.hasFeatureAtPixel(event.pixel) ? "pointer" : "";
     });
     map.on("singleclick", (browserEvent) => {
-      const clicked = map.forEachFeatureAtPixel(browserEvent.pixel, (feature) => feature as Feature);
+      const clicked = map.forEachFeatureAtPixel(
+        browserEvent.pixel,
+        (feature) => feature as Feature,
+        { hitTolerance: 16 },
+      );
       const clusteredFeatures = clicked?.get("features") as Feature<Point>[] | undefined;
       if (!clusteredFeatures?.length) return;
       const selected = clusteredFeatures
         .map((feature) => feature.get("event") as Event | undefined)
         .filter((event): event is Event => event !== undefined);
-      if (selected.length === 1) {
-        onSelectEventsRef.current(selected);
+      const view = map.getView();
+      const currentZoom = view.getZoom() ?? 10;
+      const targetZoom = clusterClickTargetZoom(currentZoom, selected.length);
+      if (targetZoom !== undefined) {
+        const clusterCoordinate = (clicked?.getGeometry() as Point | undefined)?.getCoordinates()
+          ?? browserEvent.coordinate;
+        const target = map.getTargetElement();
+        target.dataset.clusterClickAction = "zooming";
+        target.dataset.clusterTargetZoom = String(targetZoom);
+        view.animate(
+          {
+            center: clusterCoordinate,
+            zoom: targetZoom,
+            duration: reducedMotion() ? 0 : 320,
+          },
+          (completed) => {
+            if (completed) target.dataset.clusterClickAction = "zoomed";
+          },
+        );
         return;
       }
-
-      const coordinates = clusteredFeatures.map((feature) => feature.getGeometry()?.getCoordinates()).filter((coordinate): coordinate is number[] => coordinate !== undefined);
-      const first = coordinates[0];
-      const samePoint = first && coordinates.every((coordinate) => Math.abs(coordinate[0] - first[0]) < 0.5 && Math.abs(coordinate[1] - first[1]) < 0.5);
-      const zoom = map.getView().getZoom() ?? 0;
-      if (!samePoint && zoom < 17) {
-        const extent = createEmpty();
-        coordinates.forEach((coordinate) => extendCoordinate(extent, coordinate));
-        map.getView().fit(extent, { duration: 260, maxZoom: 17, padding: [90, 60, 90, 60] });
-      } else {
-        onSelectEventsRef.current(selected);
-      }
+      map.getTargetElement().dataset.clusterClickAction = "select";
+      onSelectEventsRef.current(selected);
     });
 
     const frame = window.requestAnimationFrame(() => {
@@ -210,6 +247,7 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
       map.setTarget(undefined);
       map.dispose();
       mapRef.current = null;
+      eventLayerRef.current = null;
     };
   }, []);
 
@@ -228,6 +266,11 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
   }, [mappableEvents]);
 
   useEffect(() => {
+    focusedEventIdRef.current = focusedEvent?.id;
+    eventLayerRef.current?.changed();
+  }, [focusedEvent]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (map && userOverlayRef.current) map.removeOverlay(userOverlayRef.current);
     userOverlayRef.current = null;
@@ -242,13 +285,52 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
     }
   }, [userLocation]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    const target = containerRef.current;
+    if (!map || !target || !focusedEvent || !isMappable(focusedEvent)) {
+      if (target) {
+        delete target.dataset.focusedMarkerX;
+        delete target.dataset.focusedMarkerY;
+      }
+      return;
+    }
+    delete target.dataset.focusedMarkerX;
+    delete target.dataset.focusedMarkerY;
+    const size = map.getSize();
+    if (!size) return;
+
+    const view = map.getView();
+    const zoom = Math.max(14, view.getZoom() ?? 10);
+    const resolution = view.getResolutionForZoom(zoom);
+    const eventCoordinate = fromLonLat([
+      focusedEvent.location.longitude,
+      focusedEvent.location.latitude,
+    ]);
+    const markerPixelY = size[1] * 0.28;
+    const center = [
+      eventCoordinate[0],
+      eventCoordinate[1] - (size[1] / 2 - markerPixelY) * resolution,
+    ];
+    view.animate({ center, zoom, duration: reducedMotion() ? 0 : 360 }, (completed) => {
+      if (!completed) return;
+      const markerPixel = map.getPixelFromCoordinate(eventCoordinate);
+      if (!markerPixel) return;
+      target.dataset.focusedMarkerX = String(markerPixel[0]);
+      target.dataset.focusedMarkerY = String(markerPixel[1]);
+    });
+  }, [focusedEvent, focusRequestVersion]);
+
   function recenter() {
     if (!userLocation || !mapRef.current) return;
     mapRef.current.getView().animate({ center: fromLonLat([userLocation.longitude, userLocation.latitude]), zoom: 14, duration: 320 });
   }
 
   return (
-    <section className={fullScreen ? "event-map relative h-full overflow-hidden bg-surface" : "relative overflow-hidden rounded-app border border-line bg-surface shadow-panel"}>
+    <section
+      className={fullScreen ? "event-map relative h-full overflow-hidden bg-surface" : "relative overflow-hidden rounded-app border border-line bg-surface shadow-panel"}
+      data-focused-event-id={focusedEvent?.id}
+    >
       <div ref={containerRef} className={fullScreen ? "base-map h-full w-full" : "base-map h-[58vh] min-h-[420px] w-full sm:h-[620px]"} role="region" aria-label="Карта событий" tabIndex={0} />
       {isLoading ? (
         <span className={`pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-surface/95 px-3 py-2 text-xs font-bold text-ink shadow-panel ${fullScreen ? "bottom-24" : "top-3"}`}>
@@ -262,4 +344,8 @@ export function EventMap({ fullScreen = false, events, initialCamera, isLoading,
       ) : null}
     </section>
   );
+}
+
+function reducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

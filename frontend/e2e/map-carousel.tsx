@@ -13,6 +13,8 @@ const events: Event[] = [
     id: 1,
     creator_user_id: 7,
     title: "First card",
+    description: "First description",
+    date_meeting: "2030-01-01T12:00:00Z",
     marker_size: "normal",
     auto_delete_policy: "never",
   },
@@ -20,9 +22,20 @@ const events: Event[] = [
     id: 2,
     creator_user_id: 7,
     title: "Second card",
+    description: "Second description",
+    date_meeting: "2030-02-02T12:00:00Z",
     marker_size: "normal",
     auto_delete_policy: "never",
   },
+  ...Array.from({ length: 5 }, (_, index) => ({
+    id: index + 3,
+    creator_user_id: 7,
+    title: `${["Third", "Fourth", "Fifth", "Sixth", "Seventh"][index]} card`,
+    description: `Description ${index + 3}`,
+    date_meeting: `2030-0${index + 3}-03T12:00:00Z`,
+    marker_size: "normal" as const,
+    auto_delete_policy: "never" as const,
+  })),
 ];
 
 const queryClient = new QueryClient({
@@ -30,6 +43,8 @@ const queryClient = new QueryClient({
 });
 
 function Harness() {
+  const carouselEvents = new URLSearchParams(window.location.search).has("few") ? events.slice(0, 2) : events;
+
   return (
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
@@ -46,7 +61,7 @@ function Harness() {
             }}
           >
             <MapEventCarousel
-              events={events}
+              events={carouselEvents}
               onClose={() => {
                 const root = document.getElementById("root");
                 if (root) root.textContent = "closed";
