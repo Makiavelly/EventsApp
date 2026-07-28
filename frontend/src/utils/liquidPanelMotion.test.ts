@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFORMATION_ZONE_WIDTH_PX,
+  liquidHandleHorizontalInset,
   liquidPanelPath,
   HANDLE_TAB_HEIGHT_PX,
   MAX_DEFORMATION_PX,
@@ -28,6 +29,63 @@ describe("liquid panel motion", () => {
 
     expect(path).toContain(`195 ${700 - (HANDLE_TAB_HEIGHT_PX * (1 - smoothstep(0.4)) + MAX_DEFORMATION_PX)}`);
     expect(path).not.toContain("NaN");
+  });
+
+  it("moves the deformation tip with an off-center handle", () => {
+    const path = liquidPanelPath({
+      bottomY: 832,
+      centerX: 265,
+      deformation: 0,
+      edgeY: 700,
+      progress: 0,
+      reducedMotion: false,
+      width: 390,
+    });
+
+    expect(path).toContain(`265 ${700 - HANDLE_TAB_HEIGHT_PX}`);
+    expect(path).not.toContain(`195 ${700 - HANDLE_TAB_HEIGHT_PX}`);
+  });
+
+  it("keeps enough curve on both sides at the horizontal limits", () => {
+    const width = 420;
+    const inset = liquidHandleHorizontalInset(width);
+    const path = liquidPanelPath({
+      bottomY: 832,
+      centerX: 0,
+      deformation: 0,
+      edgeY: 700,
+      progress: 0,
+      reducedMotion: false,
+      width,
+    });
+
+    expect(inset).toBeCloseTo(81.2);
+    expect(path).toContain(`${inset} ${700 - HANDLE_TAB_HEIGHT_PX}`);
+    expect(path).not.toContain(`0 ${700 - HANDLE_TAB_HEIGHT_PX}`);
+  });
+
+  it("can absorb the tab completely into the menu edge", () => {
+    const visible = liquidPanelPath({
+      bottomY: 832,
+      deformation: 0,
+      edgeY: 700,
+      progress: 0,
+      reducedMotion: false,
+      tabScale: 1,
+      width: 390,
+    });
+    const absorbed = liquidPanelPath({
+      bottomY: 832,
+      deformation: 0,
+      edgeY: 700,
+      progress: 0,
+      reducedMotion: false,
+      tabScale: 0,
+      width: 390,
+    });
+
+    expect(visible).toContain("195 676");
+    expect(absorbed).toContain("195 700");
   });
 
   it("uses a wider deformation zone and one smooth symmetric bump", () => {

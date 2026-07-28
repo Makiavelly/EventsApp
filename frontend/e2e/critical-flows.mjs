@@ -298,7 +298,8 @@ async function testEventAndProfileFlows(browser) {
   await page.goto(`${baseURL}/discover`);
   const discoverNavigation = page.getByRole("navigation", { name: "Основная навигация" });
   await discoverNavigation.waitFor();
-  await assertAttribute(discoverNavigation, "data-placement", "inline");
+  await assertAttribute(discoverNavigation, "data-placement", "bottom");
+  await assertAttribute(discoverNavigation, "data-surface", "liquid");
   await expectCount(discoverNavigation, 1, "discover has one navigation");
   await expectCount(page.getByRole("button", { name: "Карта" }), 0, "map/list control is removed");
   await expectCount(page.getByRole("button", { name: "Список" }), 0, "list control is removed");
@@ -321,7 +322,7 @@ async function testEventAndProfileFlows(browser) {
     const panelStop = element.querySelector("[data-liquid-surface-stop='panel']");
     const menuStop = element.querySelector("[data-liquid-surface-stop='menu']");
     const handle = element.querySelector(".liquid-event-panel__grip");
-    const navigation = element.querySelector(".animated-selector--navigation");
+    const navigation = document.querySelector(".bottom-navigation[data-surface='liquid'] .animated-selector--navigation");
     const frame = element.querySelector(".liquid-event-panel__frame");
     if (!(panelPath instanceof SVGPathElement)
       || !(panelStop instanceof SVGStopElement)
@@ -370,8 +371,32 @@ async function testEventAndProfileFlows(browser) {
   assert(initialHandleBox, "discover menu handle has a bounding box");
   await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y + initialHandleBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y - 70, { steps: 10 });
+  await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2 + 70, initialHandleBox.y + initialHandleBox.height / 2, { steps: 10 });
+  const horizontallyMovedHandleBox = await handleControl.boundingBox();
+  assert(
+    horizontallyMovedHandleBox && horizontallyMovedHandleBox.x > initialHandleBox.x + 55,
+    "panel handle does not follow a horizontal drag",
+  );
+  const horizontallyMovedPath = await liquidPanel.locator(".liquid-event-panel__surface path").getAttribute("d");
+  assert(horizontallyMovedPath !== closedPath, "SVG deformation does not follow the handle horizontally");
+
+  await page.mouse.move(
+    initialHandleBox.x + initialHandleBox.width / 2 + 70,
+    initialHandleBox.y + initialHandleBox.height / 2 - 12,
+  );
+  await page.mouse.move(
+    initialHandleBox.x + initialHandleBox.width / 2 + 70,
+    initialHandleBox.y + initialHandleBox.height / 2 - 82,
+    { steps: 10 },
+  );
   await assertAttribute(liquidPanel, "data-state", "dragging");
+  const combinedDragHandleBox = await handleControl.boundingBox();
+  assert(
+    combinedDragHandleBox
+      && combinedDragHandleBox.x > initialHandleBox.x + 55
+      && combinedDragHandleBox.y < initialHandleBox.y - 45,
+    "horizontal-first gesture does not continue as a two-dimensional drag",
+  );
   const dragScrollLock = await page.evaluate(() => ({
     overflow: document.body.style.overflow,
     touchAction: document.body.style.touchAction,
@@ -384,7 +409,10 @@ async function testEventAndProfileFlows(browser) {
   );
   assert(dragRotation > 0 && dragRotation < 180, "handle arrow does not rotate with drag progress");
   await page.waitForTimeout(100);
-  await page.mouse.move(initialHandleBox.x + initialHandleBox.width / 2, initialHandleBox.y - 71);
+  await page.mouse.move(
+    initialHandleBox.x + initialHandleBox.width / 2 + 70,
+    initialHandleBox.y + initialHandleBox.height / 2 - 83,
+  );
   await page.mouse.up();
   await page.waitForFunction(() =>
     document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
@@ -410,7 +438,7 @@ async function testEventAndProfileFlows(browser) {
   const liquidVisualStyles = await liquidPanel.evaluate((element) => {
     const panelStop = element.querySelector("[data-liquid-surface-stop='panel']");
     const menuStop = element.querySelector("[data-liquid-surface-stop='menu']");
-    const navigation = element.querySelector(".animated-selector--navigation");
+    const navigation = document.querySelector(".bottom-navigation[data-surface='liquid'] .animated-selector--navigation");
     if (!(panelStop instanceof SVGStopElement)
       || !(menuStop instanceof SVGStopElement)
       || !(navigation instanceof HTMLElement)) return null;
@@ -461,6 +489,42 @@ async function testEventAndProfileFlows(browser) {
   const carouselBox = await carouselViewport.boundingBox();
   assert(carouselBox, "vertical event carousel has a bounding box");
   const initialCarouselScroll = await carouselViewport.evaluate((element) => element.scrollTop);
+  assert(initialCarouselScroll <= 1, "event carousel does not start at its upper boundary");
+  const handleBeforeCarouselPull = await closeHandle.boundingBox();
+  assert(handleBeforeCarouselPull, "opened panel handle is available before carousel pull");
+  const handoffStartY = carouselBox.y + carouselBox.height * 0.65;
+  await page.mouse.move(carouselBox.x + carouselBox.width * 0.5, handoffStartY);
+  await page.mouse.down();
+  await page.mouse.move(
+    carouselBox.x + carouselBox.width * 0.5,
+    handoffStartY - 140,
+    { steps: 10 },
+  );
+  const lowerCardScroll = await carouselViewport.evaluate((element) => element.scrollTop);
+  assert(lowerCardScroll > 100, "carousel does not move to lower cards before gesture reversal");
+  await page.mouse.move(
+    carouselBox.x + carouselBox.width * 0.5,
+    handoffStartY + 90,
+    { steps: 14 },
+  );
+  await assertAttribute(liquidPanel, "data-state", "dragging");
+  const handleDuringCarouselPull = await closeHandle.boundingBox();
+  assert(
+    handleDuringCarouselPull && handleDuringCarouselPull.y > handleBeforeCarouselPull.y + 45,
+    "downward carousel pull is not handed off to the bottom sheet",
+  );
+  const scrollDuringSheetPull = await carouselViewport.evaluate((element) => element.scrollTop);
+  assert(scrollDuringSheetPull <= 1, "carousel scrolls past its upper boundary during sheet pull");
+  await page.waitForTimeout(100);
+  await page.mouse.move(
+    carouselBox.x + carouselBox.width * 0.5,
+    handoffStartY + 91,
+  );
+  await page.mouse.up();
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
+  );
+
   await page.mouse.move(carouselBox.x + carouselBox.width * 0.5, carouselBox.y + carouselBox.height * 0.78);
   await page.mouse.down();
   await page.mouse.move(carouselBox.x + carouselBox.width * 0.5, carouselBox.y + carouselBox.height * 0.12, { steps: 12 });
@@ -521,7 +585,7 @@ async function testEventAndProfileFlows(browser) {
   assert(liquidCardStyles.every((style) => style.boxShadow !== "none"), "liquid carousel cards do not cast shadows");
   const [lastLiquidCardBox, liquidNavigationBox, liquidCarouselBox] = await Promise.all([
     page.locator("[data-liquid-event-id]").last().boundingBox(),
-    liquidPanel.locator(".animated-selector--navigation").boundingBox(),
+    discoverNavigation.locator(".animated-selector--navigation").boundingBox(),
     carouselViewport.boundingBox(),
   ]);
   assert(lastLiquidCardBox && liquidNavigationBox && liquidCarouselBox, "carousel and menu bar geometry is available");
@@ -592,9 +656,35 @@ async function testEventAndProfileFlows(browser) {
   await page.waitForFunction(() =>
     document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "closed"
   );
+  await discoverHandle.click();
+  await page.waitForFunction(() =>
+    document.querySelector("[data-testid='liquid-event-panel']")?.getAttribute("data-state") === "opened"
+  );
 
-  await discoverNavigation.getByRole("link", { name: "Профиль" }).click();
+  await discoverNavigation.evaluate((element) => {
+    element.dataset.persistenceProbe = "mounted";
+  });
+  const navigationIndicator = discoverNavigation.locator(".animated-selector__indicator");
+  const indicatorTransitionDuration = await navigationIndicator.evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).transitionDuration) * 1_000
+  );
+  assert(indicatorTransitionDuration >= 300, "navigation indicator has no smooth route transition");
+  await discoverNavigation.getByRole("link", { name: "Профиль" }).click({ noWaitAfter: true });
+  const exitGhost = page.locator("[data-liquid-tab-exit-ghost]");
+  await exitGhost.waitFor();
+  await assertAttribute(exitGhost, "data-expanded", "true");
+  await expectCount(exitGhost.locator("[data-liquid-event-id]"), 3, "event cards in expanded exit ghost");
   await page.waitForURL("**/profile");
+  await page.waitForTimeout(70);
+  const exitGhostStyle = await exitGhost.locator(":scope > div").evaluate((element) => ({
+    opacity: Number.parseFloat(getComputedStyle(element).opacity),
+    transform: getComputedStyle(element).transform,
+  }));
+  assert(exitGhostStyle.opacity < 1, "liquid tab ghost does not fade over the destination page");
+  assert(exitGhostStyle.transform !== "none", "liquid tab ghost does not retract over the destination page");
+  const profileNavigation = page.getByRole("navigation", { name: "Основная навигация" });
+  await assertAttribute(profileNavigation, "data-persistence-probe", "mounted");
+  await assertAttribute(profileNavigation, "data-surface", "default");
   await expectCount(discoverHandle, 0, "discover handle is absent outside search");
 
   await page.getByRole("navigation", { name: "Основная навигация" })
@@ -604,6 +694,16 @@ async function testEventAndProfileFlows(browser) {
   const returnedDiscoverHandle = page.getByRole("button", { name: "Открыть карусель событий" });
   await returnedDiscoverHandle.waitFor();
   await assertAttribute(returnedDiscoverHandle, "aria-expanded", "false");
+  const revealedLiquidPanel = page.getByTestId("liquid-event-panel");
+  const revealProgress = await revealedLiquidPanel.evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).getPropertyValue("--liquid-absorption-progress"))
+  );
+  assert(revealProgress > 0, "liquid tab is fully visible before its entrance animation");
+  await page.waitForFunction(() => {
+    const panel = document.querySelector("[data-testid='liquid-event-panel']");
+    return panel instanceof HTMLElement
+      && Number.parseFloat(getComputedStyle(panel).getPropertyValue("--liquid-absorption-progress")) <= 0.001;
+  });
 
   await page.getByRole("navigation", { name: "Основная навигация" })
     .getByRole("link", { name: "Профиль" })

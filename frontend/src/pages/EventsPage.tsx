@@ -7,6 +7,7 @@ import { LiquidEventPanel } from "../components/LiquidEventPanel";
 import { useUserLocation } from "../hooks/useUserLocation";
 import { getDiscoverReturnState } from "../utils/discoverReturnState";
 import type { MapCameraState } from "../utils/discoverReturnState";
+import { LIQUID_TAB_REVEAL_STATE_KEY } from "../utils/liquidPanelNavigation";
 import { distanceMeters, errorMessage } from "../utils/format";
 
 const EventMap = lazy(() => import("../components/EventMap").then((module) => ({ default: module.EventMap })));
@@ -16,6 +17,9 @@ const EMPTY_EVENTS: Event[] = [];
 export function EventsPage() {
   const routeLocation = useLocation();
   const restoredStateRef = useRef(getDiscoverReturnState(routeLocation.state));
+  const revealLiquidTab = typeof routeLocation.state === "object"
+    && routeLocation.state !== null
+    && (routeLocation.state as Record<string, unknown>)[LIQUID_TAB_REVEAL_STATE_KEY] === true;
   const restoredState = restoredStateRef.current;
   const restoredEvents = restoredState?.events ?? [];
   const [mapBounds, setMapBounds] = useState<EventBounds>();
@@ -122,6 +126,7 @@ export function EventsPage() {
         onClosed={closeSelectedEvents}
         openOnMount={restoredEvents.length > 0}
         openRequestVersion={panelOpenRequest}
+        revealOnMount={revealLiquidTab}
       />
     </div>
   );

@@ -21,7 +21,7 @@ const GESTURE_AXIS_THRESHOLD_PX = 7;
 const END_SETTLE_DELAY_MS = 150;
 const TAIL_RESET_FALLBACK_MS = 900;
 
-type GestureAxis = "pending" | "horizontal" | "vertical";
+type GestureAxis = "pending" | "horizontal" | "vertical" | "sheet";
 
 type CarouselGesture = {
   axis: GestureAxis;
@@ -38,6 +38,9 @@ type DiscoverEventCarouselProps = {
   events: Event[];
   mapCamera?: MapCameraState;
   onActiveEventChange: (event: Event) => void;
+  onSheetDragEnd?: () => void;
+  onSheetDragMove?: (clientY: number) => void;
+  onSheetDragStart?: (clientY: number) => void;
 };
 
 export function DiscoverEventCarousel({
@@ -46,6 +49,9 @@ export function DiscoverEventCarousel({
   events,
   mapCamera,
   onActiveEventChange,
+  onSheetDragEnd,
+  onSheetDragMove,
+  onSheetDragStart,
 }: DiscoverEventCarouselProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<number, HTMLElement>());
@@ -231,10 +237,24 @@ export function DiscoverEventCarousel({
       suppressClickRef.current = true;
       if (gesture.axis === "vertical") setDragging(true);
     }
+    if (gesture.axis === "sheet") {
+      pointerEvent.preventDefault();
+      onSheetDragMove?.(pointerEvent.clientY);
+      return;
+    }
     if (gesture.axis !== "vertical") return;
 
     pointerEvent.preventDefault();
-    scrollWithTail(gesture.startScrollTop - deltaY);
+    const requestedScrollTop = gesture.startScrollTop - deltaY;
+    if (requestedScrollTop <= 0 && onSheetDragStart) {
+      gesture.axis = "sheet";
+      const boundaryY = gesture.startY + gesture.startScrollTop;
+      if (viewportRef.current) viewportRef.current.scrollTop = 0;
+      onSheetDragStart(boundaryY);
+      onSheetDragMove?.(pointerEvent.clientY);
+      return;
+    }
+    scrollWithTail(requestedScrollTop);
   }
 
   function pointerEnd(pointerEvent: ReactPointerEvent<HTMLDivElement>) {
@@ -245,6 +265,7 @@ export function DiscoverEventCarousel({
       pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId);
     }
     setDragging(false);
+    if (gesture.axis === "sheet") onSheetDragEnd?.();
     if (gesture.axis === "vertical") settleEndPosition();
   }
 

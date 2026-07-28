@@ -16,6 +16,7 @@ import type { MapCameraState } from "../utils/discoverReturnState";
 import {
   CLOSED_MENU_BAR_HEIGHT_PX,
   HANDLE_TAB_HEIGHT_PX,
+  liquidHandleHorizontalInset,
   liquidPanelPath,
   MAX_DEFORMATION_PX,
   MAX_PANEL_HEIGHT_PX,
@@ -25,7 +26,6 @@ import {
   SPRING_DAMPING,
   SPRING_STIFFNESS,
 } from "../utils/liquidPanelMotion";
-import { BottomNavigation } from "./BottomNavigation";
 import { DiscoverEventCarousel } from "./DiscoverEventCarousel";
 
 const PANEL_TOP_MARGIN_PX = 54;
@@ -40,9 +40,19 @@ type PanelGesture = {
   lastTime: number;
   lastY: number;
   pointerId: number;
+  startHandleX: number;
   startHandleTipY: number;
   startProgress: number;
   startX: number;
+  startY: number;
+  velocityY: number;
+};
+
+type SheetGesture = {
+  lastTime: number;
+  lastY: number;
+  startHandleTipY: number;
+  startProgress: number;
   startY: number;
   velocityY: number;
 };
@@ -63,6 +73,7 @@ type LiquidEventPanelProps = {
   onClosed?: () => void;
   openOnMount?: boolean;
   openRequestVersion?: number;
+  revealOnMount?: boolean;
 };
 
 export function LiquidEventPanel({
@@ -74,12 +85,15 @@ export function LiquidEventPanel({
   onClosed,
   openOnMount = false,
   openRequestVersion = 0,
+  revealOnMount = false,
 }: LiquidEventPanelProps) {
   const panelId = useId();
   const frameRef = useRef<HTMLDivElement>(null);
   const navigationRef = useRef<HTMLDivElement>(null);
   const panelGestureRef = useRef<PanelGesture>();
+  const sheetGestureRef = useRef<SheetGesture>();
   const motionFrameRef = useRef<number>();
+  const revealFrameRef = useRef<number>();
   const progressRef = useRef(0);
   const deformationRef = useRef(0);
   const scrollUnlockRef = useRef<() => void>();
@@ -90,6 +104,8 @@ export function LiquidEventPanel({
   const [panelState, setPanelState] = useState<PanelState>("closed");
   const [progress, setProgress] = useState(0);
   const [deformation, setDeformation] = useState(0);
+  const [absorptionProgress, setAbsorptionProgress] = useState(() => revealOnMount ? 1 : 0);
+  const [handleCenterRatio, setHandleCenterRatio] = useState(0.5);
   const [activeIndex, setActiveIndex] = useState(() => eventIndex(events, initialEventId));
   const [reducedMotion, setReducedMotion] = useState(() => prefersReducedMotion());
   const [geometry, setGeometry] = useState<PanelGeometry>(() => ({
@@ -108,7 +124,15 @@ export function LiquidEventPanel({
   const movementRange = Math.max(1, maximumHeight - closedHeight);
   const panelHeight = closedHeight + movementRange * progress;
   const edgeY = geometry.navBottom - panelHeight;
-  const baseTabLift = (reducedMotion ? 8 : HANDLE_TAB_HEIGHT_PX) * (1 - smoothstep(progress));
+  const handleHorizontalInset = liquidHandleHorizontalInset(geometry.width);
+  const handleCenterX = clamp(
+    handleCenterRatio * geometry.width,
+    handleHorizontalInset,
+    geometry.width - handleHorizontalInset,
+  );
+  const baseTabLift = (reducedMotion ? 8 : HANDLE_TAB_HEIGHT_PX)
+    * (1 - smoothstep(progress))
+    * (1 - absorptionProgress);
   const deformationLift = reducedMotion ? 0 : MAX_DEFORMATION_PX * deformation;
   const handleTipY = edgeY - baseTabLift - deformationLift;
   const handleIconOffset = Math.max(0, baseTabLift + deformationLift) * 0.46;
@@ -125,10 +149,12 @@ export function LiquidEventPanel({
   const surfaceGradientId = `${panelId.replace(/[^a-zA-Z0-9_-]/g, "")}-surface-gradient`;
   const path = liquidPanelPath({
     bottomY: geometry.navBottom,
+    centerX: handleCenterX,
     deformation,
     edgeY,
     progress,
     reducedMotion,
+    tabScale: 1 - absorptionProgress,
     width: geometry.width,
   });
 
@@ -150,6 +176,7 @@ export function LiquidEventPanel({
 
   const animateTo = useCallback((target: 0 | 1, releaseVelocity = 0) => {
     stopMotion();
+    setAbsorptionProgress(0);
     scrollUnlockRef.current?.();
     scrollUnlockRef.current = undefined;
     setPanelState(target === 1 ? "opening" : "closing");
@@ -280,6 +307,29 @@ export function LiquidEventPanel({
   }, [animateTo, closeRequestVersion]);
 
   useEffect(() => {
+    if (!revealOnMount) return;
+    const startedAt = performance.now();
+    const duration = reducedMotion ? 120 : 320;
+    const frame = (time: number) => {
+      const elapsed = clamp((time - startedAt) / duration, 0, 1);
+      const eased = 1 - (1 - elapsed) ** 3;
+      setAbsorptionProgress(1 - eased);
+      if (elapsed < 1) {
+        revealFrameRef.current = window.requestAnimationFrame(frame);
+        return;
+      }
+      revealFrameRef.current = undefined;
+    };
+    revealFrameRef.current = window.requestAnimationFrame(frame);
+    return () => {
+      if (revealFrameRef.current !== undefined) {
+        window.cancelAnimationFrame(revealFrameRef.current);
+        revealFrameRef.current = undefined;
+      }
+    };
+  }, [reducedMotion, revealOnMount]);
+
+  useEffect(() => {
     if (events.length > 0 || progressRef.current <= 0) return;
     animateTo(0);
   }, [animateTo, events.length]);
@@ -308,6 +358,7 @@ export function LiquidEventPanel({
       lastTime: time,
       lastY: event.clientY,
       pointerId: event.pointerId,
+      startHandleX: handleCenterX,
       startHandleTipY: handleTipY,
       startProgress: progressRef.current,
       startX: event.clientX,
@@ -317,12 +368,64 @@ export function LiquidEventPanel({
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
+  function sheetPointerDown(clientY: number) {
+    stopMotion();
+    scrollUnlockRef.current?.();
+    const time = performance.now();
+    sheetGestureRef.current = {
+      lastTime: time,
+      lastY: clientY,
+      startHandleTipY: handleTipY,
+      startProgress: progressRef.current,
+      startY: clientY,
+      velocityY: 0,
+    };
+    setPanelState("dragging");
+    scrollUnlockRef.current = lockPageScroll();
+  }
+
+  function sheetPointerMove(clientY: number) {
+    const gesture = sheetGestureRef.current;
+    if (!gesture) return;
+    const now = performance.now();
+    const deltaTime = Math.max(1, now - gesture.lastTime);
+    const deltaY = clientY - gesture.startY;
+    gesture.velocityY = (clientY - gesture.lastY) / deltaTime;
+    gesture.lastTime = now;
+    gesture.lastY = clientY;
+
+    const nextProgress = clamp(
+      gesture.startProgress - deltaY * PANEL_EDGE_FOLLOW_RATIO / movementRange,
+      0,
+      1,
+    );
+    const nextEdgeY = geometry.navBottom - (closedHeight + movementRange * nextProgress);
+    const nextBaseLift = (reducedMotion ? 8 : HANDLE_TAB_HEIGHT_PX) * (1 - smoothstep(nextProgress));
+    const desiredHandleTipY = gesture.startHandleTipY + deltaY;
+    const nextDeformation = reducedMotion
+      ? 0
+      : (nextEdgeY - nextBaseLift - desiredHandleTipY) / MAX_DEFORMATION_PX;
+    applyMotion(nextProgress, nextDeformation);
+  }
+
+  function sheetPointerEnd() {
+    const gesture = sheetGestureRef.current;
+    if (!gesture) return;
+    sheetGestureRef.current = undefined;
+    scrollUnlockRef.current?.();
+    scrollUnlockRef.current = undefined;
+    const target = panelTarget(progressRef.current, gesture.velocityY);
+    const progressVelocity = -gesture.velocityY * 1_000 / movementRange;
+    animateTo(target, progressVelocity);
+  }
+
   function panelPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
     const gesture = panelGestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
+    let activatedVerticalAfterHorizontal = false;
     if (gesture.axis === "pending") {
       if (Math.hypot(deltaX, deltaY) < DRAG_AXIS_THRESHOLD_PX) return;
       gesture.axis = Math.abs(deltaY) >= Math.abs(deltaX) ? "vertical" : "horizontal";
@@ -331,9 +434,33 @@ export function LiquidEventPanel({
         scrollUnlockRef.current = lockPageScroll();
       }
     }
-    if (gesture.axis !== "vertical") return;
+
+    if (
+      gesture.axis === "horizontal"
+      && Math.abs(deltaY) >= DRAG_AXIS_THRESHOLD_PX
+    ) {
+      gesture.axis = "vertical";
+      gesture.startY = event.clientY;
+      gesture.startProgress = progressRef.current;
+      gesture.startHandleTipY = handleTipY;
+      gesture.lastTime = performance.now();
+      gesture.lastY = event.clientY;
+      gesture.velocityY = 0;
+      activatedVerticalAfterHorizontal = true;
+      setPanelState("dragging");
+      scrollUnlockRef.current = lockPageScroll();
+    }
 
     event.preventDefault();
+    const nextHandleX = clamp(
+      gesture.startHandleX + deltaX,
+      handleHorizontalInset,
+      geometry.width - handleHorizontalInset,
+    );
+    setHandleCenterRatio(nextHandleX / geometry.width);
+    if (activatedVerticalAfterHorizontal) return;
+    if (gesture.axis !== "vertical") return;
+
     const now = performance.now();
     const deltaTime = Math.max(1, now - gesture.lastTime);
     gesture.velocityY = (event.clientY - gesture.lastY) / deltaTime;
@@ -345,7 +472,7 @@ export function LiquidEventPanel({
       0,
       1,
     );
-    const nextEdgeY = geometry.height - (closedHeight + movementRange * nextProgress);
+    const nextEdgeY = geometry.navBottom - (closedHeight + movementRange * nextProgress);
     const nextBaseLift = (reducedMotion ? 8 : HANDLE_TAB_HEIGHT_PX) * (1 - smoothstep(nextProgress));
     const desiredHandleTipY = gesture.startHandleTipY + deltaY;
     const nextDeformation = reducedMotion
@@ -393,6 +520,7 @@ export function LiquidEventPanel({
 
   const rootStyle = {
     "--liquid-content-reveal": contentReveal,
+    "--liquid-absorption-progress": absorptionProgress,
     "--liquid-handle-icon-offset": `${handleIconOffset}px`,
     "--liquid-handle-rotation": `${panelHandleRotation(progress)}deg`,
     "--liquid-surface-opacity": surfaceOpacity,
@@ -480,6 +608,9 @@ export function LiquidEventPanel({
               events={events}
               mapCamera={mapCamera}
               onActiveEventChange={selectEvent}
+              onSheetDragEnd={sheetPointerEnd}
+              onSheetDragMove={sheetPointerMove}
+              onSheetDragStart={sheetPointerDown}
             />
           ) : (
             <p className="liquid-event-panel__empty">Событий пока нет.</p>
@@ -489,7 +620,7 @@ export function LiquidEventPanel({
         <button
           type="button"
           className="liquid-event-panel__handle"
-          style={{ top: `${handleTipY}px` }}
+          style={{ left: `${handleCenterX}px`, top: `${handleTipY}px` }}
           aria-controls={panelId}
           aria-expanded={panelIsExpanded}
           aria-label={panelIsExpanded ? "Закрыть карусель событий" : "Открыть карусель событий"}
@@ -510,9 +641,7 @@ export function LiquidEventPanel({
           </span>
         </button>
 
-        <div ref={navigationRef} className="liquid-event-panel__navigation">
-          <BottomNavigation placement="inline" />
-        </div>
+        <div ref={navigationRef} className="liquid-event-panel__navigation" aria-hidden="true" />
       </div>
 
       <span className="sr-only" aria-live="polite">

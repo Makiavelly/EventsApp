@@ -904,7 +904,10 @@ a {
   border-radius: 999px;
   background: transparent;
   color: rgb(var(--selector-muted-ink) / 0.82);
+  opacity: calc(1 - var(--liquid-absorption-progress));
+  transform: scale(calc(1 - var(--liquid-absorption-progress) * 0.28));
   transition: color 180ms ease;
+  will-change: opacity, transform;
 }
 
 .liquid-event-panel__grip svg {
@@ -935,11 +938,12 @@ a {
   right: 0;
   bottom: max(0.75rem, env(safe-area-inset-bottom));
   left: 0;
+  height: 4.375rem;
   padding-inline: 0;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
-.liquid-event-panel__navigation .animated-selector--navigation {
+.bottom-navigation[data-surface="liquid"] .animated-selector--navigation {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
