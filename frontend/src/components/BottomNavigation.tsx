@@ -10,13 +10,19 @@ const items = [
   { to: "/profile", label: "Профиль", icon: UserRound },
 ];
 
-export function BottomNavigation() {
+export function BottomNavigation({ placement = "bottom" }: { placement?: "bottom" | "inline" }) {
   const { pathname } = useLocation();
   const activeIndex = pathname === "/" ? 0 : pathname === "/create" ? 2 : pathname === "/profile" ? 3 : 1;
   const selectorStyle = { "--selector-count": items.length } as CSSProperties;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" aria-label="Основная навигация">
+    <nav
+      className={placement === "bottom"
+        ? "fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        : "w-full"}
+      aria-label="Основная навигация"
+      data-placement={placement}
+    >
       <div className="animated-selector animated-selector--navigation mx-auto max-w-md" style={selectorStyle}>
         <SlidingSelectorIndicator activeIndex={activeIndex} />
         {items.map(({ to, label, icon: Icon }, index) => (

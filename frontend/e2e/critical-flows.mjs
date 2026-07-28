@@ -68,6 +68,22 @@ async function testEventAndProfileFlows(browser) {
     auto_delete_policy: "after_interval",
     auto_delete_after_seconds: 7200,
   };
+  const fartherEvent = {
+    ...event,
+    id: 3,
+    creator_user_id: 2,
+    title: "Farther event",
+    description: "Farther description",
+    location: { latitude: 55.89, longitude: 37.75 },
+  };
+  const sameLocationEvent = {
+    ...event,
+    id: 4,
+    creator_user_id: 2,
+    title: "Same place event",
+    description: "Same place description",
+    marker: { kind: "color", value: "#d97757" },
+  };
   let participants = [
     { event_id: 1, participant_id: 1, name: "Alex" },
   ];
@@ -113,7 +129,7 @@ async function testEventAndProfileFlows(browser) {
       });
     }
     if (path.endsWith("/events") && method === "GET") {
-      return json(route, [event]);
+      return json(route, [fartherEvent, event, sameLocationEvent]);
     }
     if (path.endsWith("/participants") && method === "GET") {
       return json(route, participants);
@@ -277,6 +293,184 @@ async function testEventAndProfileFlows(browser) {
     "invalidated public user query refetched backend",
   );
   await page.getByText("Maria", { exact: true }).nth(1).waitFor();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseURL}/discover`);
+  const topNavigation = page.getByRole("navigation", { name: "Основная навигация" });
+  await topNavigation.waitFor();
+  await assertAttribute(topNavigation, "data-placement", "inline");
+  await expectCount(topNavigation, 1, "discover has one navigation");
+  await expectCount(page.getByRole("button", { name: "Карта" }), 0, "map/list control is removed");
+  await expectCount(page.getByRole("button", { name: "Список" }), 0, "list control is removed");
+
+  const discoverCarousel = page.getByTestId("discover-event-carousel");
+  const discoverViewport = page.getByTestId("discover-event-carousel-viewport");
+  await discoverCarousel.waitFor();
+  const collapsedFrame = await discoverCarousel.evaluate((element) => {
+    const frame = element.getBoundingClientRect();
+    return { height: frame.height, bottom: frame.bottom };
+  });
+  const collapsedHeight = collapsedFrame.height;
+  assert(Math.abs(collapsedHeight - 84) <= 1, `discover carousel collapsed height is ${collapsedHeight}`);
+  assert(Math.abs(collapsedFrame.bottom - 844) <= 1, `discover carousel ends at ${collapsedFrame.bottom} instead of the screen edge`);
+  const discoverTitles = await page.locator("[data-discover-event-card-id]").evaluateAll((cards) =>
+    cards.map((card) => ({
+      id: card.getAttribute("data-discover-event-card-id"),
+      opacity: Number(getComputedStyle(card).opacity),
+    })),
+  );
+  assert(discoverTitles[0]?.id === "1", "nearest event is the first carousel card");
+  assert(discoverTitles[1]?.opacity === 0, "only the first event is visible while collapsed");
+
+  const nearestButton = page.getByRole("button", { name: "Existing event" });
+  const nearestBox = await nearestButton.boundingBox();
+  assert(nearestBox, "nearest event card has a bounding box");
+  await page.mouse.move(nearestBox.x + nearestBox.width / 2, nearestBox.y + nearestBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(nearestBox.x + nearestBox.width / 2, nearestBox.y - 220, { steps: 8 });
+  const draggedHeight = await discoverCarousel.evaluate((element) => element.getBoundingClientRect().height);
+  assert(draggedHeight > collapsedHeight + 150, "carousel follows the upward drag");
+  await page.mouse.up();
+  await assertAttribute(discoverCarousel, "data-open", "true");
+  const openBackdrop = await page.getByTestId("discover-carousel-backdrop").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { backdropFilter: style.backdropFilter, maskImage: style.maskImage };
+  });
+  assert(openBackdrop.backdropFilter !== "none", "map background is blurred while carousel is open");
+  assert(openBackdrop.maskImage.includes("gradient"), "blur does not leave a smoothly revealed marker area");
+
+  await page.mouse.click(380, 350);
+  await page.waitForFunction(() => {
+    const carousel = document.querySelector("[data-testid='discover-event-carousel'][data-variant='all-events']");
+    return carousel?.getAttribute("data-open") === "false"
+      && Math.abs(carousel.getBoundingClientRect().height - 84) <= 1;
+  });
+  await page.waitForTimeout(100);
+  const reopenedNearestBox = await nearestButton.boundingBox();
+  assert(reopenedNearestBox, "nearest event card remains available after the first outside click");
+  await page.mouse.move(reopenedNearestBox.x + reopenedNearestBox.width / 2, reopenedNearestBox.y + reopenedNearestBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(reopenedNearestBox.x + reopenedNearestBox.width / 2, reopenedNearestBox.y - 220, { steps: 8 });
+  await page.mouse.up();
+  await assertAttribute(discoverCarousel, "data-open", "true");
+
+  const fartherButton = page.getByRole("button", { name: "Farther event" });
+  await page.waitForFunction(() => {
+    const lastCard = document.querySelector("[data-discover-event-card-id='3']");
+    const carousel = document.querySelector("[data-testid='discover-event-carousel']");
+    if (!(lastCard instanceof HTMLElement) || !(carousel instanceof HTMLElement)) return false;
+    return Math.abs(lastCard.getBoundingClientRect().bottom - carousel.getBoundingClientRect().bottom) <= 1;
+  });
+  const initialTailMaximum = await discoverViewport.evaluate((element) => element.scrollHeight - element.clientHeight);
+  const fartherBox = await fartherButton.boundingBox();
+  assert(fartherBox, "last event card has a bounding box");
+  await page.mouse.move(fartherBox.x + fartherBox.width / 2, fartherBox.y + fartherBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(fartherBox.x + fartherBox.width / 2, fartherBox.y - 500, { steps: 12 });
+  const pulledTailScrollTop = await discoverViewport.evaluate((element) => element.scrollTop);
+  assert(
+    pulledTailScrollTop > initialTailMaximum + 300,
+    "all-events carousel tail stopped at the last card",
+  );
+  await page.waitForTimeout(250);
+  const heldTailScrollTop = await discoverViewport.evaluate((element) => element.scrollTop);
+  assert(heldTailScrollTop >= pulledTailScrollTop - 1, "all-events carousel settled before pointer release");
+  await page.mouse.up();
+  await page.waitForFunction(() => {
+    const lastCard = document.querySelector("[data-discover-event-card-id='3']");
+    const carousel = document.querySelector("[data-testid='discover-event-carousel']");
+    if (!(lastCard instanceof HTMLElement) || !(carousel instanceof HTMLElement)) return false;
+    return Math.abs(lastCard.getBoundingClientRect().bottom - carousel.getBoundingClientRect().bottom) <= 1;
+  });
+  await page.waitForFunction(() => {
+    const viewport = document.querySelector("[data-testid='discover-event-carousel-viewport']");
+    return viewport instanceof HTMLElement && viewport.scrollHeight - viewport.clientHeight <= 1;
+  });
+
+  await nearestButton.click();
+  await assertAttribute(nearestButton, "aria-expanded", "true");
+  assert(await page.getByText("Описание не указано.", { exact: true }).isVisible(), "persistent carousel opens event details");
+
+  await page.waitForFunction(() => {
+    const map = document.querySelector(".base-map");
+    return map instanceof HTMLElement && map.dataset.focusedMarkerX && map.dataset.focusedMarkerY;
+  });
+  const groupedMarkerPoint = await page.locator(".base-map").evaluate((element) => {
+    const frame = element.getBoundingClientRect();
+    return {
+      x: frame.left + Number(element.dataset.focusedMarkerX),
+      y: frame.top + Number(element.dataset.focusedMarkerY),
+    };
+  });
+  await page.mouse.click(380, 350);
+  await page.waitForFunction(() => {
+    const carousel = document.querySelector("[data-testid='discover-event-carousel'][data-variant='all-events']");
+    const viewport = document.querySelector("[data-testid='discover-event-carousel-viewport']");
+    return carousel?.getAttribute("data-open") === "false"
+      && Math.abs(carousel.getBoundingClientRect().height - 84) <= 1
+      && viewport instanceof HTMLElement
+      && viewport.scrollTop <= 1;
+  });
+  await assertAttribute(nearestButton, "aria-expanded", "false");
+
+  await page.waitForTimeout(350);
+  await page.mouse.click(groupedMarkerPoint.x, groupedMarkerPoint.y);
+  const selectionCarousel = page.locator("[data-testid='discover-event-carousel'][data-variant='selection']");
+  await selectionCarousel.waitFor();
+  await assertAttribute(selectionCarousel, "aria-label", "Карусель выбранных событий, 2");
+  await assertAttribute(selectionCarousel, "data-open", "true");
+
+  const selectedEventButton = page.getByRole("button", { name: "Existing event" });
+  await selectedEventButton.click();
+  await assertAttribute(selectedEventButton, "aria-expanded", "true");
+  await page.waitForFunction(() =>
+    document.querySelector(".event-map")?.getAttribute("data-focused-event-id") === "1"
+  );
+
+  await page.mouse.click(380, 350);
+  await selectionCarousel.waitFor({ state: "detached" });
+  const restoredAllEventsCarousel = page.locator("[data-testid='discover-event-carousel'][data-variant='all-events']");
+  await restoredAllEventsCarousel.waitFor();
+  const restoredAllEventsHeight = await restoredAllEventsCarousel.evaluate((element) => element.getBoundingClientRect().height);
+  assert(Math.abs(restoredAllEventsHeight - 84) <= 1, "all-events carousel did not return collapsed after marker selection");
+
+  const restoredNearestButton = page.getByRole("button", { name: "Existing event" });
+  const restoredNearestBox = await restoredNearestButton.boundingBox();
+  assert(restoredNearestBox, "restored nearest event card has a bounding box");
+  await page.mouse.move(restoredNearestBox.x + restoredNearestBox.width / 2, restoredNearestBox.y + restoredNearestBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(restoredNearestBox.x + restoredNearestBox.width / 2, restoredNearestBox.y - 220, { steps: 8 });
+  await page.mouse.up();
+  await assertAttribute(restoredAllEventsCarousel, "data-open", "true");
+  const restoredFartherButton = page.getByRole("button", { name: "Farther event" });
+  await restoredFartherButton.click();
+  await page.waitForFunction(() =>
+    document.querySelector(".event-map")?.getAttribute("data-focused-event-id") === "3"
+  );
+  await page.waitForFunction(() => {
+    const map = document.querySelector(".base-map");
+    return map instanceof HTMLElement && map.dataset.focusedMarkerX && map.dataset.focusedMarkerY;
+  });
+  const singleMarkerPoint = await page.locator(".base-map").evaluate((element) => {
+    const frame = element.getBoundingClientRect();
+    return {
+      x: frame.left + Number(element.dataset.focusedMarkerX),
+      y: frame.top + Number(element.dataset.focusedMarkerY),
+    };
+  });
+  await page.mouse.click(380, 350);
+  await page.waitForFunction(() => {
+    const carousel = document.querySelector("[data-testid='discover-event-carousel'][data-variant='all-events']");
+    return carousel?.getAttribute("data-open") === "false";
+  });
+  await page.waitForTimeout(350);
+  await page.mouse.click(singleMarkerPoint.x, singleMarkerPoint.y);
+  const singleSelectionCarousel = page.locator("[data-testid='discover-event-carousel'][data-variant='selection']");
+  await singleSelectionCarousel.waitFor();
+  await assertAttribute(singleSelectionCarousel, "aria-label", "Карусель выбранных событий, 1");
+  await assertAttribute(singleSelectionCarousel, "data-open", "true");
+  await page.mouse.click(380, 350);
+  await singleSelectionCarousel.waitFor({ state: "detached" });
 
   await page.goto(`${baseURL}/profile`);
   await page.getByRole("button", { name: "Настройки" }).click();

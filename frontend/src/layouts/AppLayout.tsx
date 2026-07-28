@@ -9,7 +9,7 @@ export function AppLayout() {
   const isHome = pathname === "/";
   const isAuth = pathname === "/auth";
   const isDiscover = pathname === "/discover";
-  const showBottomNavigation = Boolean(user) && !isHome && !isAuth;
+  const showBottomNavigation = Boolean(user) && !isHome && !isAuth && !isDiscover;
 
   return (
     <div className="min-h-screen bg-mist text-ink">
